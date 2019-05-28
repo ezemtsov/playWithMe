@@ -20,12 +20,18 @@ class Game {
     this.history = data.history;
   }
   selectCell(row, col) {
-    console.log("Clicked on:", row, col);
-    drawSelection(this, row, col);
+    if (this.history.some(
+      v => v.row == row && v.col == col)) {
+      console.log("Cell is occupied");
+    } else {
+      console.log("Clicked on:", row, col);
+      this.history.push({ row: row, col: col });
+      drawSelection(this, row, col);
+    }
   }
   replayHistory() {
     this.history.forEach(v =>
-      this.selectCell(v.row, v.col));
+      drawSelection(this, v.row, v.col));
   }
 };
 
