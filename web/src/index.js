@@ -1,83 +1,97 @@
-const size = 3;
-let turn = 0;
+//--------------------------------------------------
+// Game model
 
-let lastClicked;
+class Game {
+  static get labels() {
+    return ["X", "O"];
+  }
+  constructor() {
+    this.size = 20;
+    this.history = [];
+    this.lastMove = undefined;
+    this._turn = 1;
+  }
+  get turn() {
+    this._turn = 1 - this._turn;
+    return Game.labels[this._turn];
+  }
+  updateState(data) {
+    this.size = data.params.size;
+    this.history = data.history;
+  }
+  selectCell(row, col) {
+    console.log("Clicked on:", row, col);
+    drawSelection(this, row, col);
+  }
+  replayHistory() {
+    this.history.forEach(v =>
+      this.selectCell(v.row, v.col));
+  }
+};
 
-const isEven = (n) => (n % 2 == 0);
+//--------------------------------------------------
+// Visual functions
 
-let selectCell = (grid, row, col) => {
-  let cells = grid.getElementsByTagName('td');
-  let cellIndex = col + row * size;
+// Perform selection when cell is chosen
+function drawSelection(game, row, col) {
+  let cells = document.body.getElementsByTagName('td');
+  let cellIndex = row * game.size + col;
+
   let cell = cells[cellIndex];
 
-  if (cell !== lastClicked) {
-    if (lastClicked)
-      lastClicked.classList
-        .replace('clicked', 'normal');
-    lastClicked = cell;
+  if (game.lastMove)
+    game.lastMove.classList
+      .replace('clicked', 'normal');
+  game.lastMove = cell;
 
-    if (isEven(turn)) { cell.innerHTML = 'X'; }
-    else { cell.innerHTML = 'O'; }
-    cell.classList.toggle('clicked');
+  cell.innerHTML = game.turn;
+  cell.classList.toggle('clicked');
 
-    turn++;
-  }
-};
+}
 
-let generateGrid = (size) => {
+// Initialize game field
+function drawGrid(game) {
   var grid = document.createElement('table');
   grid.classList.toggle('grid');
-
-  for (let r = 0; r < size; ++r) {
+  for (let r = 0; r < game.size; ++r) {
     let tr = grid
       .appendChild(document.createElement('tr'));
-    for (let c = 0; c < size; ++c) {
+    for (let c = 0; c < game.size; ++c) {
       let cell = tr
         .appendChild(document.createElement('td'));
-      cell.onclick = () => {
-        console.log("Clicked on cell:", { r, c });
-        selectCell(grid, r, c);
-      };
+      cell.onclick = () => game.selectCell(r, c);
     };
   };
-  return grid;
+  document.body.appendChild(grid);
 };
 
-let fillGrid = (grid) => {
-  let cells = grid.getElementsByTagName('td');
-  for (let [r, rv] of Object.entries(testData)) {
-    for (let [c, cv] of Object.entries(rv)) {
-      let cellIndex = Number(c) + Number(r) * size;
-      cells[cellIndex].innerHTML = cv;
-    };
-  }
-};
+//--------------------------------------------------
+// "main" function
 
 window.onload = () => {
-  let grid = generateGrid(size);
-  document.body.appendChild(grid);
+  let game = new Game;
+  game.updateState(testData);
+  drawGrid(game);
+  game.replayHistory();
 
-  fillGrid(grid);
-  selectCell(grid, 2, 2);
+  game.selectCell(2, 2);
+
 };
+
+//--------------------------------------------------
+// test data
 
 const testData = {
-  0: {
-    0: "",
-    1: "X",
-    2: "",
+  params: {
+    size: 10
   },
-  1: {
-    0: "",
-    1: "O",
-    2: "",
-  },
-  2: {
-    0: "",
-    1: "X",
-    2: "",
-  }
+  history: [
+    { row: 0, col: 1 },
+    { row: 1, col: 1 },
+    { row: 2, col: 1 }]
 };
 
+//--------------------------------------------------
+// Helper functions
 
-
+const isEven = (n) => (n % 2 == 0);
