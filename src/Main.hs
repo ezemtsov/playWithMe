@@ -5,18 +5,23 @@ module Main where
 
 import GHC.Generics
 import Data.Aeson (ToJSON, FromJSON, encode, decode)
-
-import Control.Monad (forM_, forever)
-
 import Data.Text (Text)
 import qualified Data.Text as T
 
-import Control.Concurrent (MVar, newMVar, modifyMVar_,
-                           modifyMVar, readMVar)
+import Control.Monad (forM_, forever)
+import Control.Concurrent
 import Control.Exception (finally)
 
+import Web.Scotty
+import Network.Wai.Middleware.Static
 import qualified Network.WebSockets as WS
 
+main :: IO ()
+main = do
+  state <- newMVar newServerState
+  forkIO (WS.runServer "127.0.0.1" 9160 $ socketApp state)
+  scotty 8080 $ webApp
+  
 type Client = (Text, WS.Connection)
 type ServerState = [Client]
 
@@ -27,10 +32,14 @@ data Coordinate = Coordinate {
 instance ToJSON Coordinate
 instance FromJSON Coordinate
 
-application :: MVar ServerState -> WS.ServerApp
-application state pending = do
+webApp = do
+  middleware $ staticPolicy (noDots >-> addBase "web")
+  get "/" $ file "./web/index.html"
+
+socketApp :: MVar ServerState -> WS.ServerApp
+socketApp state pending = do
   conn <- WS.acceptRequest pending
-  WS.forkPingThread conn 30
+  WS.forkPingThread conn 120
 
   msg <- WS.receiveData conn
   let move = decode msg :: Maybe Coordinate
@@ -52,10 +61,7 @@ application state pending = do
             let s' = removeClient client s in return (s', s')
           broadcast (fst client `mappend` " disconnected") s
 
-main :: IO ()
-main = do
-  state <- newMVar newServerState
-  WS.runServer "127.0.0.1" 9160 $ application state
+
 
 talk :: Client -> MVar ServerState -> IO ()
 talk (user, conn) state = forever $ do

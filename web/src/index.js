@@ -6,9 +6,10 @@ class Game {
     return ["X", "O"];
   }
   constructor() {
-    this.size = 3;
+    this.size = 20;
     this.history = [];
     this.lastMove = undefined;
+    this.socket = connect(this);
     this._turn = 1;
   }
   get turn() {
@@ -22,6 +23,7 @@ class Game {
     } else {
       console.log("Clicked on:", row, col);
       this.history.push({ row: row, col: col });
+      sendMove(this.socket, row, col);
     }
   }
   fetchState(data) {
@@ -54,7 +56,7 @@ function drawSelection(game, row, col) {
 }
 
 // Initialize game field
-function drawGrid(game, socket) {
+function drawGrid(game) {
   var grid = document.createElement('table');
   grid.classList.toggle('grid');
   for (let r = 0; r < game.size; ++r) {
@@ -63,7 +65,7 @@ function drawGrid(game, socket) {
     for (let c = 0; c < game.size; ++c) {
       let cell = tr
         .appendChild(document.createElement('td'));
-      cell.onclick = () => sendMove(socket, r, c);
+      cell.onclick = () => game.selectCell(r, c);
     };
   };
   document.body.appendChild(grid);
@@ -106,8 +108,7 @@ function sendMove(socket, row, col) {
 
 window.onload = () => {
   let game = new Game;
-  let socket = connect(game);
-  drawGrid(game, socket);
+  drawGrid(game);
   // for testing only: game.fetchState(testData);
   // for testing only: game.replayHistory();
 };

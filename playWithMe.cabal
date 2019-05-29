@@ -1,13 +1,13 @@
-name:                server
+name:                playWithMe
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/server#readme
+homepage:            https://github.com/ezemtsov/playWithMe#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2019 Author name here
+author:              Evgeny Zemtsov
+maintainer:          eugene.zemtsov@gmail.com
+copyright:           2019 Evgeny Zemtsov
 category:            Web
 build-type:          Simple
 cabal-version:       >=1.10
@@ -22,3 +22,5 @@ executable server
                      , bytestring
                      , text
                      , aeson
+                     , scotty
+                     , wai-middleware-static
