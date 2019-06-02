@@ -40,18 +40,17 @@ class Game {
 // Visual functions
 
 // Perform selection when cell is chosen
-function drawSelection(game, row, col) {
+function drawSelection(game, move) {
   let cells = document.body.getElementsByTagName('td');
-  let cellIndex = row * game.size + col;
-
+  let cellIndex = move.coord.row * game.size + move.coord.col;
   let cell = cells[cellIndex];
-  console.log(cell, row, col);
+
   if (game.lastMove)
     game.lastMove.classList
       .replace('clicked', 'normal');
   game.lastMove = cell;
-
-  cell.innerHTML = game.turn;
+  console.log(move);
+  cell.innerHTML = move.value;
   cell.classList.toggle('clicked');
 }
 
@@ -86,11 +85,20 @@ function connect(game) {
   socket.onmessage = function(event) {
     let msg = (event.data);
 
-    if (msg) {
-      try {
-        let move = JSON.parse(msg);
-        drawSelection(game, move.row, move.col);
-      } catch (e) { console.log(msg); }
+    let ctrlMsg = JSON.parse(msg);
+    switch (ctrlMsg.msgType) {
+      case "Move":
+        drawSelection(game, ctrlMsg.msgValue);
+        break;
+      case "Connected":
+        console.log(ctrlMsg.msgValue.contents, "is connected");
+        break;
+      case "Disconnected":
+        console.log(ctrlMsg.msgValue.contents, "is disconnected");
+        break;
+      case "Win":
+        console.log(ctrlMsg.msgValue.contents, "won!");
+        break;
     }
   };
   return socket;
@@ -114,6 +122,11 @@ window.onload = () => {
 };
 
 //--------------------------------------------------
+// Helper functions
+
+const isEven = (n) => (n % 2 == 0);
+
+//--------------------------------------------------
 // test data
 
 const test_msg = {
@@ -133,8 +146,3 @@ const testData = {
   // { row: 1, col: 1 },
   // { row: 2, col: 1 }]
 };
-
-//--------------------------------------------------
-// Helper functions
-
-const isEven = (n) => (n % 2 == 0);
