@@ -1,20 +1,11 @@
-import 'vuetify/dist/vuetify.min.css';
-import Vue from 'vue';
-import Vuetify from 'vuetify';
-
-Vue.use(Vuetify);
-
 //--------------------------------------------------
 // Game model
 class Game {
-  static get labels() {
-    return ["X", "O"];
-  }
   constructor() {
     this.size = 20;
+    this.wait = true;
+    this.socket = undefined;
     this.history = [];
-    this.lastMove = undefined;
-    this.socket = connect(this);
     this._turn = 1;
   }
   get turn() {
@@ -23,26 +14,72 @@ class Game {
   }
   selectCell(row, col) {
     if (this.history.some(
-      v => v.row == row && v.col == col)) {
+      v => v.coord.row == row && v.coord.col == col)) {
       console.log("Cell is occupied");
     } else {
       console.log("Clicked on:", row, col);
-      this.history.push({ row: row, col: col });
+      this.history.push({ coord: { row: row, col: col } });
       sendMove(this.socket, row, col);
     }
   }
-  fetchState(data) {
-    this.size = data.params.size;
-    this.history = data.history;
-  }
   replayHistory() {
-    this.history.forEach(v =>
-      drawSelection(this, v.row, v.col));
+    this.history.forEach(move => {
+      drawSelection(this, move);
+    });
   }
-};
+  connect() {
+    let myGame = this;
+    let socket = new WebSocket('ws://127.0.0.1:9160');
+    socket.onopen = function(event) {
+      console.log('Connected to: ' + event.currentTarget.url);
+      sendMove(socket, -1, -1);
+    };
+    socket.onerror = function(error) {
+      console.log('WebSocket Error: ' + error);
+    };
+    socket.onmessage = function(event) {
+      let msg = (event.data);
+
+      let ctrlMsg = JSON.parse(msg);
+      switch (ctrlMsg.mType) {
+        case "User":
+          switch (ctrlMsg.mValue.tag) {
+            case "Connected":
+              requestHistory(socket);
+              drawSnackbar(ctrlMsg.mValue.contents + " connected");
+              break;
+            case "Disconnected":
+              drawSnackbar(ctrlMsg.mValue.contents + " disconnected");
+              break;
+            case "Move":
+              drawSelection(myGame, ctrlMsg.mValue.contents);
+              break;
+            case "Win":
+              drawSnackbar(ctrlMsg.mValue.contents + " won!");
+              break;
+          }
+        case "Game":
+          switch (ctrlMsg.mValue.tag) {
+            case "History":
+              console.log('Recieved history');
+              myGame.history = ctrlMsg.mValue.contents;
+              myGame.replayHistory();
+              break;
+            case "Clean":
+              myGame.history = [];
+              myGame.lastMove = undefined;
+              cleanGrid();
+              drawSnackbar("New game started");
+          }
+      };
+    };
+    this.socket = socket;
+  };
+}
 
 //--------------------------------------------------
 // Visual functions
+
 
 // Perform selection when cell is chosen
 function drawSelection(game, move) {
@@ -54,14 +91,34 @@ function drawSelection(game, move) {
     game.lastMove.classList
       .replace('clicked', 'normal');
   game.lastMove = cell;
-  console.log(move);
+
   cell.innerHTML = move.value;
   cell.classList.toggle('clicked');
 }
 
+// Network
+function sendMove(socket, row, col) {
+  let message = {
+    type: 'Move',
+    value: {
+      row: row,
+      col: col
+    }
+  };
+  socket.send(JSON.stringify(message));
+};
+
+function requestHistory(socket) {
+  let message = {
+    type: 'Command',
+    value: 'GetHistory'
+  };
+  socket.send(JSON.stringify(message));
+};
+
 // Initialize game field
 function drawGrid(game) {
-  var grid = document.createElement('table');
+  let grid = document.createElement('table');
   grid.classList.toggle('grid');
   for (let r = 0; r < game.size; ++r) {
     let tr = grid
@@ -72,82 +129,46 @@ function drawGrid(game) {
       cell.onclick = () => game.selectCell(r, c);
     };
   };
-  document.body.appendChild(grid);
+  document.getElementById('myContent').appendChild(grid);
 };
 
-//--------------------------------------------------
-// Network functions
+function cleanGrid() {
+  let cells = document.body.getElementsByTagName('td');
+  cells = Array.from(cells);
+  cells.forEach(cell => cell.innerHTML = '');
+}
 
-function connect(game) {
-  var socket = new WebSocket('ws://127.0.0.1:9160');
-  socket.onopen = function(event) {
-    console.log('Connected to: ' + event.currentTarget.url);
-    sendMove(socket, 0, 0);
-  };
-  socket.onerror = function(error) {
-    console.log('WebSocket Error: ' + error);
-  };
-  socket.onmessage = function(event) {
-    let msg = (event.data);
 
-    let ctrlMsg = JSON.parse(msg);
-    switch (ctrlMsg.msgType) {
-      case "Move":
-        drawSelection(game, ctrlMsg.msgValue);
-        break;
-      case "Connected":
-        console.log(ctrlMsg.msgValue.contents, "is connected");
-        break;
-      case "Disconnected":
-        console.log(ctrlMsg.msgValue.contents, "is disconnected");
-        break;
-      case "Win":
-        console.log(ctrlMsg.msgValue.contents, "won!");
-        break;
-    }
+function drawSnackbar(text) {
+  'use strict';
+  let snackbarContainer = document.querySelector('#my-snackbar');
+  let data = {
+    message: text,
+    timeout: 2000,
+    actionHandler: function(event) { },
+    actionText: 'Close'
   };
-  return socket;
+  snackbarContainer.MaterialSnackbar.showSnackbar(data);
 };
 
-function sendMove(socket, row, col) {
+function requestCleanup(socket) {
   let message = {
-    row: row,
-    col: col
+    type: 'Command',
+    value: 'CleanGrid'
   };
   socket.send(JSON.stringify(message));
-};
+}
+
+function initInterface(socket) {
+  let cleanupButton = document.getElementById('cleanupButton');
+  cleanupButton.onclick = () => requestCleanup(socket);
+}
+
 //--------------------------------------------------
 // "main" function
-
 window.onload = () => {
   let game = new Game;
   drawGrid(game);
-  // for testing only: game.fetchState(testData);
-  // for testing only: game.replayHistory();
-};
-
-//--------------------------------------------------
-// Helper functions
-
-const isEven = (n) => (n % 2 == 0);
-
-//--------------------------------------------------
-// test data
-
-const test_msg = {
-  player: "host",
-  move: {
-    row: 0,
-    col: 0
-  }
-};
-
-const testData = {
-  params: {
-    size: 20
-  },
-  history: []
-  // { row: 0, col: 1 },
-  // { row: 1, col: 1 },
-  // { row: 2, col: 1 }]
+  game.connect();
+  initInterface(game.socket);
 };

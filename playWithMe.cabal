@@ -17,6 +17,9 @@ executable server
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Game
+                     , TypesGame
+                     , TypesInput
+                     , TypesOutput
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , websockets
@@ -26,3 +29,4 @@ executable server
                      , scotty
                      , wai-middleware-static
                      , containers
+                     , unordered-containers                                          

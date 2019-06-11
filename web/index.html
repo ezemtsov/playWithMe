@@ -2,42 +2,44 @@
 <html>
   <head>
     <title>PlayWithMe!</title>
-    <link href='https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons' rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700" type="text/css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
     <link rel="stylesheet" href="css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+    <script src="index.js"></script>
   </head>
   <body>
-    <div id="app">
-      <v-btn color="primary"
-             dark
-             @click="snackbar = true">
-        Show snackbar
-      </v-btn>
-      <v-snackbar v-model="snackbar"
-                  :top=true
-                  :timeout="timeout" >
-        Placeholder for invite URL
-        <v-btn color="white"
-               flat
-               @click="snackbar = false" >
-          Close
-        </v-btn>
-      </v-snackbar>
+    <!-- Always shows a header, even in smaller screens. -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+      <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+          <!-- Title -->
+          <span class="mdl-layout-title"></span>
+          <!-- Add spacer, to align navigation to the right -->
+          <div class="mdl-layout-spacer"></div>
+          <!-- Navigation. -->
+          <nav class="mdl-navigation">
+            <button id="cleanupButton" class="mdl-layout-icon mdl-button mdl-js-button mdl-button--icon">
+              <i class="material-icons">refresh</i>
+            </button>
+          </nav>
+        </div>
+      </header>
+      <div class="mdl-layout__drawer">
+        <span class="mdl-layout-title">PlayWithMe!</span>
+        <nav class="mdl-navigation">
+          <a class="mdl-navigation__link" href="">About</a>
+        </nav>
+      </div>
+      <main class="mdl-layout__content">
+        <div id="myContent" class="page-content">
+          <div id="my-snackbar" class="mdl-js-snackbar mdl-snackbar">
+            <div class="mdl-snackbar__text"></div>
+            <button class="mdl-snackbar__action" type="button"></button>
+          </div>
+        </div>
+      </main>
     </div>
-    <script>
-     new Vue({
-       el: '#app',
-       data: {
-         snackbar: false,
-         timeout: 6000,
-         position: true,
-       }
-     })
-     vm.message = 'test'
-    </script>
-    <script src="index.js"></script>
   </body>
 </html>

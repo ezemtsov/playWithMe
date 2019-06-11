@@ -12,3 +12,6 @@
 .grid td.clicked {
     font-weight:bold; color:red;
 }
+.grid td.inactive {
+    border:1px solid #f2f2f2;
+}
