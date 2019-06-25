@@ -19,5 +19,5 @@ main = do
 
 webApp = do
   middleware $ staticPolicy (noDots >-> addBase "web")
-  -- Root route should bring to Landing page
-  get "/" $ file "./web/index.html"
+  -- Root route should bring to Landging page
+  get "/:session" $ file "./web/index.html"
