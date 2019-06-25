@@ -76,7 +76,6 @@ gameLogic :: Client -> I.Message -> GameAction
 gameLogic client msg state = case msg of
   I.Get d -> case d of
     I.History -> do
-      print "history requested"
       sendHistory client state
   I.Delete d -> case d of
     I.History -> cleanHistory state
