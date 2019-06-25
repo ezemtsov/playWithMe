@@ -2,15 +2,11 @@
 module TypesGame where
 
 import qualified Data.Map.Strict as Map
-
+import Data.Text (Text)
 import Data.Aeson
 import GHC.Generics
 
-data Role = Host | Guest
-  deriving (Generic, Eq, Show)
-instance FromJSON Role
-instance ToJSON Role
-
+type Player = Text
 type Grid = Map.Map Coordinate CellValue
 
 data Cell = Cell {

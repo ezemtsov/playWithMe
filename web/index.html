@@ -10,6 +10,24 @@
     <script src="index.js"></script>
   </head>
   <body>
+    
+    <!-- Dialog confirmation to create a new session -->
+    <dialog class="mdl-dialog my-mdl-dialog">
+      <h4 class="mdl-dialog__title">Start a new game?</h4>
+      <div class="mdl-dialog__content">
+        <p>To join an existing session use the session URL</p>
+          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+            <input class="mdl-textfield__input playerName" type="text">
+            <label class="mdl-textfield__label" for="playerName">Your name...</label>
+          </div>
+      </div>
+      <div class="mdl-dialog__actions">
+        <button type="button"
+                class="mdl-button mdl-button--raised mdl-button--colored newGame"
+                disabled>New game</button>
+      </div>
+    </dialog>
+    
     <!-- Always shows a header, even in smaller screens. -->
     <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
       <header class="mdl-layout__header">
@@ -20,7 +38,8 @@
           <div class="mdl-layout-spacer"></div>
           <!-- Navigation. -->
           <nav class="mdl-navigation">
-            <button id="cleanupButton" class="mdl-layout-icon mdl-button mdl-js-button mdl-button--icon">
+            <button id="cleanupButton"
+                    class="mdl-layout-icon mdl-button mdl-js-button mdl-button--icon">
               <i class="material-icons">refresh</i>
             </button>
           </nav>
@@ -28,9 +47,6 @@
       </header>
       <div class="mdl-layout__drawer">
         <span class="mdl-layout-title">PlayWithMe!</span>
-        <nav class="mdl-navigation">
-          <a class="mdl-navigation__link" href="">About</a>
-        </nav>
       </div>
       <main class="mdl-layout__content">
         <div id="myContent" class="page-content">

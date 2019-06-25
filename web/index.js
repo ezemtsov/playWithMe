@@ -2,24 +2,30 @@
 // Game model
 class Game {
   constructor() {
-    this.size = 20;
+    this.size = 30;
     this.wait = true;
-    this.socket = undefined;
+    this.socket = null;
     this.history = [];
-    this._turn = 1;
   }
-  get turn() {
-    this._turn = 1 - this._turn;
-    return Game.labels[this._turn];
+  get session() {
+    let pathname = window.location.pathname;
+    let session = () => {
+      if (pathname == '/') {
+        return null;
+      } else {
+        return pathname.slice(1);
+      }
+    };
+    return session;
   }
   selectCell(row, col) {
     if (this.history.some(
       v => v.coord.row == row && v.coord.col == col)) {
-      console.log("Cell is occupied");
+      console.log('Cell is occupied');
     } else {
-      console.log("Clicked on:", row, col);
+      console.log('Clicked on:', row, col);
       this.history.push({ coord: { row: row, col: col } });
-      sendMove(this.socket, row, col);
+      sendMessage(this.socket, this.session(), msgMove(row, col));
     }
   }
   replayHistory() {
@@ -27,12 +33,14 @@ class Game {
       drawSelection(this, move);
     });
   }
-  connect() {
+  connect(name) {
     let myGame = this;
     let socket = new WebSocket('ws://127.0.0.1:9160');
+
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
-      sendMove(socket, -1, -1);
+      console.log('onOpen', myGame.session(), msgJoinSession(name));
+      sendMessage(socket, myGame.session(), msgJoinSession(name));
     };
     socket.onerror = function(error) {
       console.log('WebSocket Error: ' + error);
@@ -42,34 +50,36 @@ class Game {
 
       let ctrlMsg = JSON.parse(msg);
       switch (ctrlMsg.mType) {
-        case "User":
+        case 'User':
           switch (ctrlMsg.mValue.tag) {
-            case "Connected":
-              requestHistory(socket);
-              drawSnackbar(ctrlMsg.mValue.contents + " connected");
+            case 'Connected':
+              drawSnackbar(ctrlMsg.mValue.contents + ' connected');
+              sendMessage(myGame.socket, myGame.session(), msgRequestHistory());
               break;
-            case "Disconnected":
-              drawSnackbar(ctrlMsg.mValue.contents + " disconnected");
+            case 'Disconnected':
+              drawSnackbar(ctrlMsg.mValue.contents + ' disconnected');
               break;
-            case "Move":
+            case 'Move':
               drawSelection(myGame, ctrlMsg.mValue.contents);
               break;
-            case "Win":
-              drawSnackbar(ctrlMsg.mValue.contents + " won!");
+            case 'Win':
+              drawSnackbar(ctrlMsg.mValue.contents + ' won!');
               break;
           }
-        case "Game":
+        case 'Game':
           switch (ctrlMsg.mValue.tag) {
-            case "History":
-              console.log('Recieved history');
+            case 'NewSession':
+              history.pushState(null, null, ctrlMsg.mValue.contents);
+              break;
+            case 'History':
               myGame.history = ctrlMsg.mValue.contents;
               myGame.replayHistory();
               break;
-            case "Clean":
+            case 'Clean':
               myGame.history = [];
-              myGame.lastMove = undefined;
+              myGame.lastMove = null;
               cleanGrid();
-              drawSnackbar("New game started");
+              drawSnackbar('New game started');
           }
       };
     };
@@ -77,46 +87,62 @@ class Game {
   };
 }
 
+
 //--------------------------------------------------
-// Visual functions
+// NETWORK FUNCTIONS
 
-
-// Perform selection when cell is chosen
-function drawSelection(game, move) {
-  let cells = document.body.getElementsByTagName('td');
-  let cellIndex = move.coord.row * game.size + move.coord.col;
-  let cell = cells[cellIndex];
-
-  if (game.lastMove)
-    game.lastMove.classList
-      .replace('clicked', 'normal');
-  game.lastMove = cell;
-
-  cell.innerHTML = move.value;
-  cell.classList.toggle('clicked');
+function sendMessage(socket, session, msg) {
+  let message = [session, msg];
+  socket.send(JSON.stringify(message));
 }
 
-// Network
-function sendMove(socket, row, col) {
-  let message = {
-    type: 'Move',
-    value: {
-      row: row,
-      col: col
+function msgMove(row, col) {
+  return {
+    tag: 'Post',
+    contents: {
+      tag: 'Move',
+      contents: {
+        row: row,
+        col: col
+      }
     }
   };
-  socket.send(JSON.stringify(message));
 };
 
-function requestHistory(socket) {
-  let message = {
-    type: 'Command',
-    value: 'GetHistory'
+function msgJoinSession(name) {
+  return {
+    tag: 'Connect',
+    contents: {
+      tag: 'Player',
+      contents: name
+    }
   };
-  socket.send(JSON.stringify(message));
-};
+}
 
-// Initialize game field
+function msgRequestHistory() {
+  return {
+    tag: 'Get',
+    contents: {
+      tag: 'History'
+    }
+  };
+}
+
+
+function msgCleanHistory() {
+  return {
+    tag: 'Delete',
+    contents: {
+      tag: 'History'
+    }
+  };
+}
+
+
+//--------------------------------------------------
+// GRID FUNCTIONS
+
+
 function drawGrid(game) {
   let grid = document.createElement('table');
   grid.classList.toggle('grid');
@@ -132,11 +158,30 @@ function drawGrid(game) {
   document.getElementById('myContent').appendChild(grid);
 };
 
+
 function cleanGrid() {
   let cells = document.body.getElementsByTagName('td');
   cells = Array.from(cells);
   cells.forEach(cell => cell.innerHTML = '');
 }
+
+
+function drawSelection(game, move) {
+  let cells = document.body.getElementsByTagName('td');
+  let cellIndex = move.coord.row * game.size + move.coord.col;
+  let cell = cells[cellIndex];
+
+  if (game.lastMove)
+    game.lastMove.classList
+      .replace('clicked', 'normal');
+  game.lastMove = cell;
+
+  cell.innerHTML = move.value;
+  cell.classList.toggle('clicked');
+}
+
+//--------------------------------------------------
+// INTERFACE FUNCTIONS
 
 
 function drawSnackbar(text) {
@@ -151,24 +196,41 @@ function drawSnackbar(text) {
   snackbarContainer.MaterialSnackbar.showSnackbar(data);
 };
 
-function requestCleanup(socket) {
-  let message = {
-    type: 'Command',
-    value: 'CleanGrid'
-  };
-  socket.send(JSON.stringify(message));
-}
 
-function initInterface(socket) {
+function initInterface(game) {
   let cleanupButton = document.getElementById('cleanupButton');
-  cleanupButton.onclick = () => requestCleanup(socket);
+  cleanupButton.onclick = () => sendMessage(game.socket, game.session, msgCleanHistory());
+
+  let dialog = document.querySelector('dialog');
+  let nameInput = dialog.querySelector('.playerName');
+  let newGameButton = dialog.querySelector('.newGame');
+
+  nameInput.addEventListener('keyup', function(event) {
+    if (event.keyCode === 13) {
+      event.preventDefault();
+      newGameButton.click();
+    }
+    if (nameInput.value != '') {
+      newGameButton.removeAttribute('disabled');
+    } else {
+      newGameButton.setAttribute('disabled', null);
+    }
+  });
+
+  newGameButton.addEventListener('click', function() {
+    let name = nameInput.value;
+    game.connect(name);
+    dialog.close();
+  });
+
+  dialog.showModal();
 }
 
 //--------------------------------------------------
 // "main" function
 window.onload = () => {
   let game = new Game;
+
   drawGrid(game);
-  game.connect();
-  initInterface(game.socket);
+  initInterface(game);
 };

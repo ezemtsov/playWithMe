@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
-module TypesOutput where
+
+module TypesGameOutput where
 
 import Data.Aeson
+import Data.Text
 import GHC.Generics
 
-import qualified TypesGame as Game
+import qualified TypesGame as TG
 
 -- Structure for output messages
 data Message = Message {
@@ -20,11 +22,14 @@ data MessageType =
 instance ToJSON MessageType
 
 data MessageValue =
-    Connected Game.Role
-  | Disconnected Game.Role
-  | Move Game.Cell
-  | Win Game.Role
-  | History [Game.Cell]
+  -- User values
+    Connected TG.Player
+  | Disconnected TG.Player
+  | Move TG.Cell
+  | Win TG.Player
+  -- Game values
+  | NewSession [Char]
+  | History [TG.Cell]
   | Clean
   deriving (Generic, Show)
 instance ToJSON MessageValue
