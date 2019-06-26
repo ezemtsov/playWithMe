@@ -3,7 +3,6 @@
 module Main where
 
 import Control.Concurrent
-import Data.Hashable
 import Web.Scotty
 import Network.Wai.Middleware.Static
 import qualified Network.WebSockets as WS
@@ -14,8 +13,8 @@ import Router
 main :: IO ()
 main = do
   state <- newMVar Router.newRouterState
-  forkIO (WS.runServer "127.0.0.1" 9160 $ startRouter state)
-  scotty 8080 $ webApp
+  forkIO (WS.runServer "0.0.0.0" 8080 $ startRouter state)
+  scotty 80 $ webApp
 
 webApp = do
   middleware $ staticPolicy (noDots >-> addBase "web")

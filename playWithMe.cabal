@@ -13,7 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-executable server
+executable playWithMe-server
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Game
@@ -31,5 +31,4 @@ executable server
                      , wai-middleware-static
                      , containers
                      , unordered-containers
-                     , hashable
                      , random

@@ -12,7 +12,6 @@ import Control.Exception (finally)
 import qualified Network.WebSockets as WS
 import Data.ByteString.Lazy (ByteString)
 import Data.Aeson (FromJSON, ToJSON, encode, decode)
-import Data.Hashable
 import GHC.Generics
 import System.Random
 

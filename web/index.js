@@ -1,3 +1,4 @@
+import dialogPolyfill from './node_modules/dialog-polyfill';
 //--------------------------------------------------
 // Game model
 class Game {
@@ -35,7 +36,7 @@ class Game {
   }
   connect(name) {
     let myGame = this;
-    let socket = new WebSocket('ws://127.0.0.1:9160');
+    let socket = new WebSocket('ws://34.68.64.169:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
@@ -202,6 +203,7 @@ function initInterface(game) {
   cleanupButton.onclick = () => sendMessage(game.socket, game.session, msgCleanHistory());
 
   let dialog = document.querySelector('dialog');
+  dialogPolyfill.registerDialog(dialog);
   let nameInput = dialog.querySelector('.playerName');
   let newGameButton = dialog.querySelector('.newGame');
 
