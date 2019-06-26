@@ -1,4 +1,3 @@
-import dialogPolyfill from './node_modules/dialog-polyfill';
 //--------------------------------------------------
 // Game model
 class Game {
