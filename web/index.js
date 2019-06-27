@@ -2,10 +2,11 @@
 // Game model
 class Game {
   constructor() {
-    this.size = 30;
+    this.size = 25;
     this.wait = true;
     this.socket = null;
     this.history = [];
+    this.players = [];
   }
   get session() {
     let pathname = window.location.pathname;
@@ -17,6 +18,14 @@ class Game {
       }
     };
     return session;
+  }
+  rememberPlayer(player) {
+    this.players.push(player);
+    addToPlayerList(player);
+  }
+  forgetPlayer(player) {
+    this.players = this.players.filter(e => e != player);
+    removeFromPlayerList(player);
   }
   selectCell(row, col) {
     if (this.history.some(
@@ -35,7 +44,8 @@ class Game {
   }
   connect(name) {
     let myGame = this;
-    let socket = new WebSocket('ws://34.68.64.169:8080');
+    //let socket = new WebSocket('ws://34.68.64.169:8080');
+    let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
@@ -55,9 +65,11 @@ class Game {
             case 'Connected':
               drawSnackbar(ctrlMsg.mValue.contents + ' connected');
               sendMessage(myGame.socket, myGame.session(), msgRequestHistory());
+              myGame.rememberPlayer(ctrlMsg.mValue.contents);
               break;
             case 'Disconnected':
               drawSnackbar(ctrlMsg.mValue.contents + ' disconnected');
+              myGame.forgetPlayer(ctrlMsg.mValue.contents);
               break;
             case 'Move':
               drawSelection(myGame, ctrlMsg.mValue.contents);
@@ -72,8 +84,12 @@ class Game {
               history.pushState(null, null, ctrlMsg.mValue.contents);
               break;
             case 'History':
-              myGame.history = ctrlMsg.mValue.contents;
+              let history = ctrlMsg.mValue.contents[0];
+              let players = ctrlMsg.mValue.contents[1];
+              myGame.players = players;
+              myGame.history = history;
               myGame.replayHistory();
+              refillPlayerList(myGame.players);
               break;
             case 'Clean':
               myGame.history = [];
@@ -183,6 +199,27 @@ function drawSelection(game, move) {
 //--------------------------------------------------
 // INTERFACE FUNCTIONS
 
+function refillPlayerList(players) {
+  let ul = document.querySelector('.player-list-item');
+  while (ul.firstChild) {
+    ul.removeChild(ul.firstChild);
+  }
+  players.forEach(player => addToPlayerList(player));
+}
+
+function addToPlayerList(player) {
+  let ul = document.querySelector('.player-list-item');
+  let li = document.createElement('li');
+  li.classList.add('mdl-list__item');
+  li.id = player;
+  li.appendChild(document.createTextNode(player));
+  ul.appendChild(li);
+}
+
+function removeFromPlayerList(player) {
+  let li = document.getElementById(player);
+  li.parentNode.removeChild(li);
+}
 
 function drawSnackbar(text) {
   'use strict';

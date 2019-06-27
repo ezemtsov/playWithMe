@@ -31,11 +31,9 @@
     </dialog>
     
     <!-- Always shows a header, even in smaller screens. -->
-    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-drawer mdl-layout--fixed-header">
       <header class="mdl-layout__header">
         <div class="mdl-layout__header-row">
-          <!-- Title -->
-          <span class="mdl-layout-title"></span>
           <!-- Add spacer, to align navigation to the right -->
           <div class="mdl-layout-spacer"></div>
           <!-- Navigation. -->
@@ -47,11 +45,19 @@
           </nav>
         </div>
       </header>
-      <div class="mdl-layout__drawer">
-        <span class="mdl-layout-title">PlayWithMe!</span>
+      <div class="player-list-pane mdl-layout--fixed-drawer mdl-layout__drawer">
+        <span class="mdl-layout-title">Player list</span>
+        <ul class="player-list-item mdl-list">
+        </ul>
       </div>
       <main class="mdl-layout__content">
         <div id="myContent" class="page-content">
+          <aside class="mdl-layout__drawer">
+            <span class="mdl-layout-title">A Drawer</span>
+            <nav class="mdl-navigation">
+              <a class="mdl-navigation__link" href="#">A link</a>
+            </nav>
+          </aside>
           <div id="my-snackbar" class="mdl-js-snackbar mdl-snackbar">
             <div class="mdl-snackbar__text"></div>
             <button class="mdl-snackbar__action" type="button"></button>

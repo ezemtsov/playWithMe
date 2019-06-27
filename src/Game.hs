@@ -103,7 +103,9 @@ saveMove (user, conn) coord state = do
 sendHistory :: Client -> GameAction
 sendHistory (user, conn) state = do
   readMVar state >>= \s -> do
-    let ctrlMsg = O.Message O.Game (O.History . TG.transformGrid $ history s)
+    let ctrlMsg = O.Message O.Game
+                  ( O.History ( TG.transformGrid $ history s
+                              , fst <$> clients s ))
     WS.sendTextData conn (encode ctrlMsg)
 
 cleanHistory :: GameAction

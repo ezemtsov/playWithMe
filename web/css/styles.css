@@ -18,3 +18,8 @@
 .my-mdl-dialog {
   width: 400px;
 }
+.player-list-item {
+  position: relative;
+  left: 30px;
+  width: 250px;
+}

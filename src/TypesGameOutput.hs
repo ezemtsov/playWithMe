@@ -29,7 +29,7 @@ data MessageValue =
   | Win TG.Player
   -- Game values
   | NewSession [Char]
-  | History [TG.Cell]
+  | History ([TG.Cell],[TG.Player])
   | Clean
   deriving (Generic, Show)
 instance ToJSON MessageValue
