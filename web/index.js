@@ -172,7 +172,7 @@ function drawGrid(game) {
       cell.onclick = () => game.selectCell(r, c);
     };
   };
-  document.getElementById('myContent').appendChild(grid);
+  document.getElementById('grid').appendChild(grid);
 };
 
 function cleanGrid() {
