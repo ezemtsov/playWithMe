@@ -49,7 +49,7 @@ class Game {
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
-      console.log('onOpen', myGame.session(), msgJoinSession(name));
+      // console.log('onOpen', myGame.session(), msgJoinSession(name));
       sendMessage(socket, myGame.session(), msgJoinSession(name));
     };
     socket.onerror = function(error) {
@@ -81,7 +81,7 @@ class Game {
         case 'Game':
           switch (ctrlMsg.mValue.tag) {
             case 'NewSession':
-              history.pushState(null, null, ctrlMsg.mValue.contents);
+              window.history.pushState(null, null, ctrlMsg.mValue.contents);
               break;
             case 'History':
               let history = ctrlMsg.mValue.contents[0];
@@ -160,40 +160,37 @@ function msgCleanHistory() {
 
 
 function drawGrid(game) {
-  let grid = document.createElement('table');
+  let grid = document.createElement('div');
   grid.classList.toggle('grid');
   for (let r = 0; r < game.size; ++r) {
-    let tr = grid
-      .appendChild(document.createElement('tr'));
+    let row = document.createElement('div');
+    grid.appendChild(row);
     for (let c = 0; c < game.size; ++c) {
-      let cell = tr
-        .appendChild(document.createElement('td'));
+      let cell = row.appendChild(document.createElement('div'));
+      cell.id = cellId(r, c);
+      cell.classList.toggle('grid-cell');
       cell.onclick = () => game.selectCell(r, c);
     };
   };
   document.getElementById('myContent').appendChild(grid);
 };
 
-
 function cleanGrid() {
-  let cells = document.body.getElementsByTagName('td');
+  let cells = document.body.getElementsByClassName('grid-cell');
   cells = Array.from(cells);
   cells.forEach(cell => cell.innerHTML = '');
 }
 
-
 function drawSelection(game, move) {
-  let cells = document.body.getElementsByTagName('td');
-  let cellIndex = move.coord.row * game.size + move.coord.col;
-  let cell = cells[cellIndex];
+  let cell = document.getElementById(cellId(move.coord.row, move.coord.col));
 
   if (game.lastMove)
     game.lastMove.classList
-      .replace('clicked', 'normal');
+      .replace('grid-cell_clicked', 'grid-cell_normal');
   game.lastMove = cell;
 
   cell.innerHTML = move.value;
-  cell.classList.toggle('clicked');
+  cell.classList.toggle('grid-cell_clicked');
 }
 
 //--------------------------------------------------
@@ -271,4 +268,9 @@ window.onload = () => {
 
   drawGrid(game);
   initInterface(game);
+};
+
+
+const cellId = (r, c) => {
+  return "cell-" + r + ":" + c;
 };
