@@ -1,41 +1,49 @@
+:root {
+    --border    : 1px solid #ccc;
+    --cell-size : 25px
+}
 .grid {
-    margin: 20px;
-    display: table;
-    width: 45em;
-    white-space: nowrap;
+    display     : flex;
+
+    border-left : var(--border);
 }
-.grid-cell {
-    display: table-cell;
-    cursor: pointer;
-    width: 25px;
-    height:25px;
-    line-height: 25px;
-    border-right: 1px solid #ccc;
-    border-bottom: 1px solid #ccc;
-    text-align: center;
-    font-family: sans-serif;
-    font-size: 20px;
+.cell {
+    display         : flex;
+    flex            : none;
+    align-items     : center;
+    justify-content : center;
+    cursor          : pointer;
+    width           : var(--cell-size);
+    height          : var(--cell-size);
+    border-right    : var(--border);
+    border-top      : var(--border);
+    font-family     : sans-serif;
+    font-size       : 20px;
 }
-.grid-cell:last-child {
-    border-right: none;
+.cell:last-child {
+    border-bottom   : var(--border);
+}
+.grid-cell:hover {
+    background: #f2f2f2;
 }
 .grid-cell_normal {
-    font-weight: normal;
-    color: black;
+    font-weight  : normal;
+    color        : black;
 }
 .grid-cell_clicked {
-    font-weight: bold;
-    color: red;
+    font-weight : bold;
+    color       : red;
 }
 .static-content {
-    overflow:auto;
-    -webkit-overflow-scrolling: auto;
+    margin : 2em;
+    overflow                   : auto;
+    -webkit-overflow-scrolling : touch;
 }
 .my-mdl-dialog {
-    width: 400px;
+    width : 400px;
 }
 .player-list-item {
-    position: relative;
-    left: 30px;
-    width: 250px;
+    position : relative;
+    left     : 30px;
+    width    : 250px;
 }

@@ -2,7 +2,7 @@
 // Game model
 class Game {
   constructor() {
-    this.size = 25;
+    this.size = 30;
     this.wait = true;
     this.socket = null;
     this.history = [];
@@ -168,7 +168,7 @@ function drawGrid(game) {
     for (let c = 0; c < game.size; ++c) {
       let cell = row.appendChild(document.createElement('div'));
       cell.id = cellId(r, c);
-      cell.classList.toggle('grid-cell');
+      cell.classList.toggle('cell');
       cell.onclick = () => game.selectCell(r, c);
     };
   };
@@ -176,7 +176,7 @@ function drawGrid(game) {
 };
 
 function cleanGrid() {
-  let cells = document.body.getElementsByClassName('grid-cell');
+  let cells = document.body.getElementsByClassName('cell');
   cells = Array.from(cells);
   cells.forEach(cell => cell.innerHTML = '');
 }
