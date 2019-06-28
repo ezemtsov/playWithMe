@@ -28,7 +28,7 @@
     color: red;
 }
 .static-content {
-    overflow:scroll;
+    overflow:auto;
     -webkit-overflow-scrolling: auto;
 }
 .my-mdl-dialog {
