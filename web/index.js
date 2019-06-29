@@ -66,8 +66,8 @@ class Game {
   }
   connect(name) {
     let myGame = this;
-    //let socket = new WebSocket('ws://34.68.64.169:8080');
-    let socket = new WebSocket('ws://0.0.0.0:8080');
+    let socket = new WebSocket('ws://34.68.64.169:8080');
+    //let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
