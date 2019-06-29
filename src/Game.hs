@@ -2,7 +2,7 @@
 
 module Game where
 
-import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict.InsOrd as HM
 import Data.ByteString.Lazy (ByteString)
 
 import Control.Monad (forM_, forever)
@@ -23,7 +23,6 @@ import qualified TypesGameOutput as O
 data GameState = GameState {
     clients :: [Client]
   , history :: TG.Grid
-  , lastMove :: TG.Coordinate
   }
 
 type Client = (TG.Player, WS.Connection)
@@ -32,7 +31,7 @@ type Client = (TG.Player, WS.Connection)
 --------------------------------------------------
 
 newGameState :: GameState
-newGameState = GameState [] Map.empty undefined
+newGameState = GameState [] HM.empty
 
 numClients :: GameState -> Int
 numClients = length . clients
@@ -44,26 +43,27 @@ addClient :: Client -> GameState -> GameState
 addClient client state = GameState
   (client : clients state)
   (history state)
-  (lastMove state)
 
 removeClient :: Client -> GameState -> GameState
 removeClient client state = GameState
   (filter ((/= fst client) . fst) $ clients state)
   (history state)
-  (lastMove state)
 
 broadcast :: ByteString -> GameState -> IO ()
 broadcast message state = do
   forM_ (clients state) $ \(_, conn) ->
     WS.sendTextData conn message
 
-addMove :: TG.Coordinate -> GameState -> GameState
-addMove coord state = GameState
+addMove :: TG.Cell -> GameState -> GameState
+addMove (TG.Cell coord value) state =
+  GameState
   (clients state)
-  (Map.insert coord value (history state))
-  (coord)
-  where value = if even (Map.size $ history state)
-                then TG.X else TG.O
+  (HM.insert coord value (history state))
+
+lastMove :: GameState -> TG.Cell
+lastMove state = let (c, v) = head $
+                       HM.toRevList (history state)
+                 in TG.Cell c v
 
 --------------------------------------------------
 -- Game server functions
@@ -75,24 +75,21 @@ type GameAction = MVar GameState -> IO ()
 gameLogic :: Client -> I.Message -> GameAction
 gameLogic client msg state = case msg of
   I.Get d -> case d of
-    I.History -> do
-      sendHistory client state
+    I.History -> sendHistory client state
   I.Delete d -> case d of
     I.History -> cleanHistory state
   I.Post d -> case d of
-    I.Move coord -> saveMove client coord state
+    I.Move cell -> saveMove client cell state
 
-saveMove :: Client -> TG.Coordinate -> GameAction
-saveMove (user, conn) coord state = do
+saveMove :: Client -> TG.Cell -> GameAction
+saveMove (user, conn) cell state = do
   -- Save move into game history
   modifyMVar_ state $ \s -> do
-    let s' = addMove coord s
+    let s' = addMove cell s
     return s'
   -- Share the move with other clients
   readMVar state >>= \s -> do
-    let value = (history s) Map.! (lastMove s)
-    let ctrlMsg = O.Message O.User $
-                  O.Move (TG.Cell coord value)
+    let ctrlMsg = O.Message O.User (O.Move cell)
     broadcast (encode ctrlMsg) s
       -- Then check if player won
     if winSituation s
@@ -104,14 +101,14 @@ sendHistory :: Client -> GameAction
 sendHistory (user, conn) state = do
   readMVar state >>= \s -> do
     let ctrlMsg = O.Message O.Game
-                  ( O.History ( TG.transformGrid $ history s
+                  ( O.History ( TG.toCell <$> HM.toList (history s)
                               , fst <$> clients s ))
     WS.sendTextData conn (encode ctrlMsg)
 
 cleanHistory :: GameAction
 cleanHistory state = do
-  modifyMVar_ state $ \s -> return $ GameState
-    (clients s) Map.empty undefined
+  modifyMVar_ state $ \s -> return $
+    GameState (clients s) HM.empty
   readMVar state >>= \s ->
     let ctrlMsg = O.Message O.Game O.Clean
     in broadcast (encode ctrlMsg) s
@@ -124,29 +121,31 @@ type Direction = (Int, Int)
 type Counter = Int
 
 -- Recursively counts symbols in one direction
-countStrike :: TG.Coordinate -> TG.Grid
+countStrike :: TG.Cell -> TG.Grid
             -> Direction -> Counter
-countStrike coord history axis =
-  go 0 coord history axis
-  where go :: Counter -> TG.Coordinate
+countStrike cell history axis =
+  go 0 cell history axis
+  where go :: Counter -> TG.Cell
            -> TG.Grid -> Direction -> Counter
-        go i coord history (deltaR, deltaC) = do
+        go i (TG.Cell coord cellValue)
+          history (deltaR, deltaC) = do
           -- Calculate updated coordinates
           let nextMove = TG.Coordinate
                          (TG.row coord + deltaR)
                          (TG.col coord + deltaC)
-          let nextValue = nextMove `Map.lookup` history
-          case nextMove `Map.lookup` history of
+          let nextValue = HM.lookup nextMove history
+          case nextValue of
             Nothing -> i
-            Just v -> if v == history Map.! coord
-              then go (i + 1) nextMove history (deltaR, deltaC)
+            Just v -> if v == cellValue
+              then go (i + 1) (TG.Cell nextMove v)
+                   history (deltaR, deltaC)
               else i
 
 -- Counts symbols in direct and inversed direction
 -- Then sums them up and adds 1 (actual recent move)
-countStrikes :: TG.Coordinate -> TG.Grid -> [Counter]
-countStrikes move history =
-  let count = map (countStrike move history)
+countStrikes :: TG.Cell -> TG.Grid -> [Counter]
+countStrikes cell history =
+  let count = map (countStrike cell history)
       zipWithSum = zipWith (fmap (+1) . (+))
   in zipWithSum (count right) (count left)
   where right = [(-1,0),(-1,-1),(0,-1),(1,-1)]

@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 module TypesGame where
 
-import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict.InsOrd as HM
 import Data.Text (Text)
 import Data.Aeson
 import GHC.Generics
+import Data.Hashable
 
 type Player = Text
-type Grid = Map.Map Coordinate CellValue
+type Grid = HM.InsOrdHashMap Coordinate CellValue
 
 data Cell = Cell {
     coord :: Coordinate
@@ -16,7 +17,6 @@ data Cell = Cell {
 instance FromJSON Cell
 instance ToJSON Cell
 
--- We recieve pure coordinates from front
 data Coordinate = Coordinate {
     row :: Int
   , col :: Int
@@ -24,12 +24,9 @@ data Coordinate = Coordinate {
 instance FromJSON Coordinate
 instance ToJSON Coordinate
 instance ToJSONKey Coordinate
+instance Hashable Coordinate
 
-data CellValue = X | O
-  deriving (Generic, Eq, Show)
-instance ToJSON CellValue
-instance FromJSON CellValue
+type CellValue = Text
 
-transformGrid :: Grid -> [Cell]
-transformGrid grid = map toCell (Map.toList grid)
-  where toCell (k, v) = Cell k v
+toCell :: (Coordinate, CellValue) -> Cell
+toCell (k,v) = Cell k v

@@ -7,6 +7,7 @@ class Game {
     this.socket = null;
     this.history = [];
     this.players = [];
+    this.selectedToken = "X";
   }
   get session() {
     let pathname = window.location.pathname;
@@ -28,29 +29,51 @@ class Game {
     removeFromPlayerList(player);
   }
   selectCell(row, col) {
+    let move = {
+      coord: {
+        row: row,
+        col: col
+      },
+      value: this.selectedToken
+    };
+
     if (this.history.some(
       v => v.coord.row == row && v.coord.col == col)) {
       console.log('Cell is occupied');
     } else {
       console.log('Clicked on:', row, col);
-      this.history.push({ coord: { row: row, col: col } });
-      sendMessage(this.socket, this.session(), msgMove(row, col));
+      this.history.push(move);
+      sendMessage(
+        this.socket,
+        this.session(),
+        msgMove(row, col, this.selectedToken));
     }
   }
   replayHistory() {
+    //Redraw all the moves from history
     this.history.forEach(move => {
       drawSelection(this, move);
     });
+
+    // Pick a correct token.
+    // It's being selected based on available tokens
+    // and list of connected players.
+    let playersN = this.players.length;
+    // tokens are defined once as global alias to token class elements
+    let tokensN = Array.from(tokens).length;
+    let playerToken = (playersN - 1) % tokensN;
+    switchToToken(this, tokens[playerToken]);
   }
   connect(name) {
     let myGame = this;
-    let socket = new WebSocket('ws://34.68.64.169:8080');
-    //let socket = new WebSocket('ws://0.0.0.0:8080');
+    //let socket = new WebSocket('ws://34.68.64.169:8080');
+    let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
-      // console.log('onOpen', myGame.session(), msgJoinSession(name));
+
       sendMessage(socket, myGame.session(), msgJoinSession(name));
+      sendMessage(socket, myGame.session(), msgRequestHistory(name));
     };
     socket.onerror = function(error) {
       console.log('WebSocket Error: ' + error);
@@ -64,7 +87,6 @@ class Game {
           switch (ctrlMsg.mValue.tag) {
             case 'Connected':
               drawSnackbar(ctrlMsg.mValue.contents + ' connected');
-              sendMessage(myGame.socket, myGame.session(), msgRequestHistory());
               myGame.rememberPlayer(ctrlMsg.mValue.contents);
               break;
             case 'Disconnected':
@@ -85,6 +107,7 @@ class Game {
               break;
             case 'History':
               let history = ctrlMsg.mValue.contents[0];
+              console.log('Recieved history');
               let players = ctrlMsg.mValue.contents[1];
               myGame.players = players;
               myGame.history = history;
@@ -112,14 +135,17 @@ function sendMessage(socket, session, msg) {
   socket.send(JSON.stringify(message));
 }
 
-function msgMove(row, col) {
+function msgMove(row, col, v) {
   return {
     tag: 'Post',
     contents: {
       tag: 'Move',
       contents: {
-        row: row,
-        col: col
+        coord: {
+          row: row,
+          col: col
+        },
+        value: v
       }
     }
   };
@@ -182,14 +208,16 @@ function cleanGrid() {
 }
 
 function drawSelection(game, move) {
-  let cell = document.getElementById(cellId(move.coord.row, move.coord.col));
+  let coord = move.coord;
+  let value = move.value;
+  let cell = document.getElementById(cellId(coord.row, coord.col));
 
   if (game.lastMove)
     game.lastMove.classList
       .replace('grid-cell_clicked', 'grid-cell_normal');
   game.lastMove = cell;
 
-  cell.innerHTML = move.value;
+  cell.innerHTML = value;
   cell.classList.toggle('grid-cell_clicked');
 }
 
@@ -230,6 +258,18 @@ function drawSnackbar(text) {
   snackbarContainer.MaterialSnackbar.showSnackbar(data);
 };
 
+function switchToToken(game, token) {
+  //tokens are defined once as global alias to token class elemets)
+  for (let t of tokens) {
+    t.classList.remove('mdl-button--colored');
+  }
+  token.classList.add('mdl-button--colored');
+  game.selectedToken = token.innerText;
+}
+
+function selectedToken() {
+
+}
 
 function initInterface(game) {
   let cleanupButton = document.getElementById('cleanupButton');
@@ -239,6 +279,10 @@ function initInterface(game) {
   dialogPolyfill.registerDialog(dialog);
   let nameInput = dialog.querySelector('.playerName');
   let newGameButton = dialog.querySelector('.newGame');
+
+  //tokens are defined once as global alias to token class elemets)
+  for (let t of tokens)
+    t.onclick = () => switchToToken(game, t);
 
   nameInput.addEventListener('keyup', function(event) {
     if (event.keyCode === 13) {
@@ -265,11 +309,11 @@ function initInterface(game) {
 // "main" function
 window.onload = () => {
   let game = new Game;
-
   drawGrid(game);
   initInterface(game);
 };
 
+let tokens = document.getElementsByClassName('token');
 
 const cellId = (r, c) => {
   return "cell-" + r + ":" + c;

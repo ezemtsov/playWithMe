@@ -29,6 +29,7 @@ executable playWithMe-server
                      , aeson
                      , scotty
                      , wai-middleware-static
-                     , containers
+                     , insert-ordered-containers
                      , unordered-containers
+                     , hashable
                      , random

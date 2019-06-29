@@ -1,6 +1,7 @@
 :root {
     --border    : 1px solid #ccc;
-    --cell-size : 25px
+    --cell-size : 25px;
+    --token-font: sans-serif;
 }
 .grid-container {
     margin : 2em;   
@@ -20,7 +21,6 @@
     height          : var(--cell-size);
     border-right    : var(--border);
     border-top      : var(--border);
-    font-family     : sans-serif;
     font-size       : 20px;
 }
 .cell:last-child {
@@ -48,4 +48,13 @@
     position : relative;
     left     : 30px;
     width    : 250px;
+}
+.token-list {
+    display : flex;
+    flex-direction: row;
+    margin-left : 3em;
+    margin-right : 3em;
+}
+.token {
+    font-family: var(--token-font);
 }

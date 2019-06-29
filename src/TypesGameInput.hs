@@ -19,7 +19,7 @@ instance ToJSON Message
 
 data Data =
     Player TG.Player
-  | Move TG.Coordinate
+  | Move TG.Cell
   | History
   deriving (Generic, Eq, Show)
 instance FromJSON Data
