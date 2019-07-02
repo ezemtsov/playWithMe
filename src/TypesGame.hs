@@ -7,6 +7,8 @@ import Data.Aeson
 import GHC.Generics
 import Data.Hashable
 
+type SessionId = [Char]
+
 type Player = Text
 type Grid = HM.InsOrdHashMap Coordinate CellValue
 

@@ -1,4 +1,4 @@
- {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Router where
@@ -17,7 +17,7 @@ import System.Random
 
 import qualified TypesGameInput as I
 import qualified TypesGameOutput as O
-import qualified TypesGame as TG
+import qualified TypesGame as G
 import Game
 
 ----------------------------------------------------------------------
@@ -29,21 +29,20 @@ import Game
 -- to join specific session.
 
 -- To make that possible we need to define router state
-type RouterState = HashMap SessionId (MVar GameState)
-type SessionId = [Char]
+type RouterState = HashMap G.SessionId (MVar GameState)
 
 newRouterState :: RouterState
 newRouterState = HM.empty
 
-addSession :: SessionId -> MVar GameState
+addSession :: G.SessionId -> MVar GameState
            -> RouterState -> RouterState
 addSession = HM.insert
 
-getSession :: SessionId -> RouterState
+getSession :: G.SessionId -> RouterState
            -> Maybe (MVar GameState)
 getSession = HM.lookup
 
-data RouterMessage = Route (Maybe SessionId) I.Message
+data RouterMessage = Route (Maybe G.SessionId) I.Message
   deriving (Generic, Eq, Show)
 instance FromJSON RouterMessage
 instance ToJSON RouterMessage
@@ -51,7 +50,7 @@ instance ToJSON RouterMessage
 data StateVersion = New | Existing
   deriving (Eq, Show)
 
-fetchGameSession :: Maybe SessionId
+fetchGameSession :: Maybe G.SessionId
                  -> WS.Connection
                  -> MVar RouterState
                  -> IO ( MVar GameState )
@@ -81,7 +80,7 @@ fetchGameSession maybeSession conn rState =
       -- Generate new sessionId
       sId <- genHash
       -- Send sessionId to the client
-      let ctrlMsg = O.Message O.Game (O.NewSession sId)
+      let ctrlMsg = O.SetSession (O.SessionId sId)
       WS.sendTextData conn (encode ctrlMsg)
       -- Update the router state
       modifyMVar_ rState $ \s ->
@@ -114,7 +113,7 @@ startRouter rState pending = do
             modifyMVar_ gState $ \s -> do
               let s' = Game.addClient client s
               -- Warn everybody
-              let ctrlMsg = O.Message O.User (O.Connected name)
+              let ctrlMsg = O.Connected (O.Player name)
               Game.broadcast (encode ctrlMsg) s'
               return s'
 
@@ -143,15 +142,15 @@ disconnect client gState = do
     let s' = removeClient client s in return (s',s')
     
   -- Broadcast that one of the players is disconnected
-  let ctrlMsg = O.Message O.User
-                (O.Disconnected $ fst client)
+  let ctrlMsg = O.Disconnected $
+                O.Player (fst client)
   broadcast (encode ctrlMsg) s
     
 incorrectMessage :: ByteString -> IO ()
 incorrectMessage msg =
   print ("Incorrect message: " <> msg)
 
-genHash :: IO SessionId
+genHash :: IO G.SessionId
 genHash = do
   let hashChr = ['0'..'9'] ++ ['a'..'z'] ++ ['A'..'Z']
   xs <- sequenceA .

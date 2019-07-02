@@ -66,65 +66,57 @@ class Game {
   }
   connect(name) {
     let myGame = this;
-    let socket = new WebSocket('ws://34.68.64.169:8080');
-    //let socket = new WebSocket('ws://0.0.0.0:8080');
+    //let socket = new WebSocket('ws://34.68.64.169:8080');
+    let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
 
-      sendMessage(socket, myGame.session(), msgJoinSession(name));
-      sendMessage(socket, myGame.session(), msgRequestHistory(name));
+      sendMessage(socket, myGame.session(), msgConnect(name));
+      sendMessage(socket, myGame.session(), mstGetHistory(name));
     };
     socket.onerror = function(error) {
       console.log('WebSocket Error: ' + error);
     };
     socket.onmessage = function(event) {
       let msg = (event.data);
-
       let ctrlMsg = JSON.parse(msg);
-      switch (ctrlMsg.mType) {
-        case 'User':
-          switch (ctrlMsg.mValue.tag) {
-            case 'Connected':
-              drawSnackbar(ctrlMsg.mValue.contents + ' connected');
-              myGame.rememberPlayer(ctrlMsg.mValue.contents);
-              break;
-            case 'Disconnected':
-              drawSnackbar(ctrlMsg.mValue.contents + ' disconnected');
-              myGame.forgetPlayer(ctrlMsg.mValue.contents);
-              break;
-            case 'Move':
-              drawSelection(myGame, ctrlMsg.mValue.contents);
-              break;
-            case 'Win':
-              drawSnackbar(ctrlMsg.mValue.contents + ' won!');
-              break;
-          }
-        case 'Game':
-          switch (ctrlMsg.mValue.tag) {
-            case 'NewSession':
-              window.history.pushState(null, null, ctrlMsg.mValue.contents);
-              break;
-            case 'History':
-              let history = ctrlMsg.mValue.contents[0];
-              console.log('Recieved history');
-              let players = ctrlMsg.mValue.contents[1];
-              myGame.players = players;
-              myGame.history = history;
-              myGame.replayHistory();
-              refillPlayerList(myGame.players);
-              break;
-            case 'Clean':
-              myGame.history = [];
-              myGame.lastMove = null;
-              cleanGrid();
-              drawSnackbar('New game started');
-          }
-      };
+      let data = ctrlMsg.data;
+      switch (ctrlMsg.message) {
+        case 'Connected':
+          drawSnackbar(data.Player + ' connected');
+          myGame.rememberPlayer(data.Player);
+          break;
+        case 'Disconnected':
+          drawSnackbar(data.Player + ' disconnected');
+          myGame.forgetPlayer(data.Player);
+          break;
+        case 'Move':
+          drawSelection(myGame, data.Cell);
+          break;
+        case 'Win':
+          drawSnackbar(data.Player + ' won!');
+          break;
+        case 'SetSession':
+          window.history.pushState(null, null, data.SessionId);
+          break;
+        case 'SetHistory':
+          console.log('Recieved history');
+          myGame.players = data.History.players;
+          myGame.history = data.History.moves;
+          myGame.replayHistory();
+          refillPlayerList(myGame.players);
+          break;
+        case 'Clean':
+          myGame.history = [];
+          myGame.lastMove = null;
+          cleanGrid();
+          drawSnackbar('New game started');
+      }
     };
     this.socket = socket;
   };
-}
+};
 
 
 //--------------------------------------------------
@@ -137,49 +129,32 @@ function sendMessage(socket, session, msg) {
 
 function msgMove(row, col, v) {
   return {
-    tag: 'Post',
-    contents: {
-      tag: 'Move',
-      contents: {
-        coord: {
-          row: row,
-          col: col
-        },
+    method: 'PostMove',
+    resource: {
+      Cell: {
+        coord: { row: row, col: col },
         value: v
       }
     }
   };
 };
 
-function msgJoinSession(name) {
+function msgConnect(name) {
   return {
-    tag: 'Connect',
-    contents: {
-      tag: 'Player',
-      contents: name
+    method: 'Connect',
+    resource: {
+      Player: name
     }
   };
 }
 
-function msgRequestHistory() {
-  return {
-    tag: 'Get',
-    contents: {
-      tag: 'History'
-    }
-  };
-}
-
+function mstGetHistory() {
+  return { method: 'GetHistory' };
+};
 
 function msgCleanHistory() {
-  return {
-    tag: 'Delete',
-    contents: {
-      tag: 'History'
-    }
-  };
+  return { method: 'CleanHistory' };
 }
-
 
 //--------------------------------------------------
 // GRID FUNCTIONS
@@ -252,7 +227,7 @@ function drawSnackbar(text) {
   let data = {
     message: text,
     timeout: 2000,
-    actionHandler: function(event) { },
+    actionHandler: function() { },
     actionText: 'Close'
   };
   snackbarContainer.MaterialSnackbar.showSnackbar(data);

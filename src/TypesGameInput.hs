@@ -4,23 +4,36 @@
 module TypesGameInput where
 
 import Data.Aeson
+import Data.Aeson.TH
 import GHC.Generics
 
 import qualified TypesGame as TG
 
+messageOptions = defaultOptions
+  { sumEncoding = TaggedObject
+    { tagFieldName = "method"
+    , contentsFieldName = "resource" }
+  }
+
+resourceOptions = defaultOptions
+  { sumEncoding = ObjectWithSingleField }
+
 data Message =
     Connect Data
-  | Get Data
-  | Post Data
-  | Delete Data
+  | PostMove Data
+  | GetHistory
+  | CleanHistory
   deriving (Generic, Eq, Show)
-instance FromJSON Message
-instance ToJSON Message
+instance FromJSON Message where
+  parseJSON = genericParseJSON messageOptions
+instance ToJSON Message where
+  toJSON = genericToJSON messageOptions
 
 data Data =
     Player TG.Player
-  | Move TG.Cell
-  | History
+  | Cell TG.Cell
   deriving (Generic, Eq, Show)
-instance FromJSON Data
-instance ToJSON Data
+instance FromJSON Data where
+  parseJSON = genericParseJSON resourceOptions
+instance ToJSON Data where
+  toJSON = genericToJSON resourceOptions
