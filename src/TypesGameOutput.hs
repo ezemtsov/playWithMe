@@ -21,7 +21,7 @@ data Message =
 instance ToJSON Message where
   toJSON = genericToJSON defaultOptions
     { sumEncoding = TaggedObject
-      { tagFieldName = "message"
+      { tagFieldName      = "message"
       , contentsFieldName = "data" }
     }
 
@@ -29,7 +29,7 @@ data Data =
     Player TG.Player
   | Cell TG.Cell
   | SessionId TG.SessionId
-  | History { moves :: [TG.Cell]
+  | History { moves   :: [TG.Cell]
             , players :: [TG.Player] }
   deriving (Generic, Show)
 instance ToJSON Data where

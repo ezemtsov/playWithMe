@@ -11,7 +11,7 @@ import qualified TypesGame as TG
 
 messageOptions = defaultOptions
   { sumEncoding = TaggedObject
-    { tagFieldName = "method"
+    { tagFieldName      = "method"
     , contentsFieldName = "resource" }
   }
 
