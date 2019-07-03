@@ -71,8 +71,8 @@ class Game {
   }
   connect(name) {
     let game = this;
-    //let socket = new WebSocket('ws://34.68.64.169:8080');
-    let socket = new WebSocket('ws://0.0.0.0:8080');
+    let socket = new WebSocket('ws://34.68.64.169:8080');
+    //let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
@@ -127,6 +127,11 @@ class Game {
 
 //--------------------------------------------------
 // NETWORK FUNCTIONS
+
+// INPUT
+// Rewrite handler function
+
+// OUTPUT
 
 function sendMessage(socket, session, msg) {
   let message = [session, msg];
@@ -189,34 +194,40 @@ function cleanGrid() {
 }
 
 function fillCell(move) {
-  let coord = move.coord;
-  let value = move.value;
-  let cell = document.getElementById(
-    cellId(coord.row, coord.col));
+  if (move) {
+    let coord = move.coord;
+    let value = move.value;
+    let cell = document.getElementById(
+      cellId(coord.row, coord.col));
 
-  if (cell) {
-    cell.innerHTML = value;
+    if (cell) {
+      cell.innerHTML = value;
+    }
   }
 }
 
 function focusCell(move) {
-  let coord = move.coord;
-  let cell = document.getElementById(
-    cellId(coord.row, coord.col));
+  if (move) {
+    let coord = move.coord;
+    let cell = document.getElementById(
+      cellId(coord.row, coord.col));
 
-  if (cell) {
-    cell.classList.toggle('grid-cell_clicked');
+    if (cell) {
+      cell.classList.toggle('grid-cell_clicked');
+    }
   }
 }
 
 function unfocusCell(move) {
-  let coord = move.coord;
-  let cell = document.getElementById(
-    cellId(coord.row, coord.col));
+  if (move) {
+    let coord = move.coord;
+    let cell = document.getElementById(
+      cellId(coord.row, coord.col));
 
-  if (cell) {
-    cell.classList
-      .replace('grid-cell_clicked', 'grid-cell_normal');
+    if (cell) {
+      cell.classList
+        .replace('grid-cell_clicked', 'grid-cell_normal');
+    }
   }
 }
 
