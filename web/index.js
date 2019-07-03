@@ -9,6 +9,9 @@ class Game {
     this.players = [];
     this.selectedToken = "X";
   }
+  get lastMove() {
+    return this.history[this.history.length - 1];
+  }
   get session() {
     let pathname = window.location.pathname;
     let session = () => {
@@ -42,6 +45,7 @@ class Game {
       console.log('Cell is occupied');
     } else {
       console.log('Clicked on:', row, col);
+      unfocusCell(this.lastMove);
       this.history.push(move);
       sendMessage(
         this.socket,
@@ -52,8 +56,9 @@ class Game {
   replayHistory() {
     //Redraw all the moves from history
     this.history.forEach(move => {
-      drawSelection(this, move);
+      fillCell(move);
     });
+    focusCell(this.lastMove);
 
     // Pick a correct token.
     // It's being selected based on available tokens
@@ -65,15 +70,15 @@ class Game {
     switchToToken(this, tokens[playerToken]);
   }
   connect(name) {
-    let myGame = this;
+    let game = this;
     //let socket = new WebSocket('ws://34.68.64.169:8080');
     let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
 
-      sendMessage(socket, myGame.session(), msgConnect(name));
-      sendMessage(socket, myGame.session(), mstGetHistory(name));
+      sendMessage(socket, game.session(), msgConnect(name));
+      sendMessage(socket, game.session(), mstGetHistory(name));
     };
     socket.onerror = function(error) {
       console.log('WebSocket Error: ' + error);
@@ -84,15 +89,17 @@ class Game {
       let data = ctrlMsg.data;
       switch (ctrlMsg.message) {
         case 'Connected':
+          drawGrid(game.size, (r, c) => game.selectCell(r, c));
           drawSnackbar(data.Player + ' connected');
-          myGame.rememberPlayer(data.Player);
+          game.rememberPlayer(data.Player);
           break;
         case 'Disconnected':
           drawSnackbar(data.Player + ' disconnected');
-          myGame.forgetPlayer(data.Player);
+          game.forgetPlayer(data.Player);
           break;
         case 'Move':
-          drawSelection(myGame, data.Cell);
+          fillCell(data.Cell);
+          focusCell(data.Cell);
           break;
         case 'Win':
           drawSnackbar(data.Player + ' won!');
@@ -102,14 +109,13 @@ class Game {
           break;
         case 'SetHistory':
           console.log('Recieved history');
-          myGame.players = data.History.players;
-          myGame.history = data.History.moves;
-          myGame.replayHistory();
-          refillPlayerList(myGame.players);
+          game.players = data.History.players;
+          game.history = data.History.moves;
+          game.replayHistory();
+          refillPlayerList(game.players);
           break;
         case 'Clean':
-          myGame.history = [];
-          myGame.lastMove = null;
+          game.history = [];
           cleanGrid();
           drawSnackbar('New game started');
       }
@@ -160,17 +166,17 @@ function msgCleanHistory() {
 // GRID FUNCTIONS
 
 
-function drawGrid(game) {
+function drawGrid(size, clickHandler) {
   let grid = document.createElement('div');
   grid.classList.toggle('grid');
-  for (let r = 0; r < game.size; ++r) {
+  for (let r = 0; r < size; ++r) {
     let row = document.createElement('div');
     grid.appendChild(row);
-    for (let c = 0; c < game.size; ++c) {
+    for (let c = 0; c < size; ++c) {
       let cell = row.appendChild(document.createElement('div'));
       cell.id = cellId(r, c);
       cell.classList.toggle('cell');
-      cell.onclick = () => game.selectCell(r, c);
+      cell.onclick = () => clickHandler(r, c);
     };
   };
   document.getElementById('grid').appendChild(grid);
@@ -182,18 +188,36 @@ function cleanGrid() {
   cells.forEach(cell => cell.innerHTML = '');
 }
 
-function drawSelection(game, move) {
+function fillCell(move) {
   let coord = move.coord;
   let value = move.value;
-  let cell = document.getElementById(cellId(coord.row, coord.col));
+  let cell = document.getElementById(
+    cellId(coord.row, coord.col));
 
-  if (game.lastMove)
-    game.lastMove.classList
+  if (cell) {
+    cell.innerHTML = value;
+  }
+}
+
+function focusCell(move) {
+  let coord = move.coord;
+  let cell = document.getElementById(
+    cellId(coord.row, coord.col));
+
+  if (cell) {
+    cell.classList.toggle('grid-cell_clicked');
+  }
+}
+
+function unfocusCell(move) {
+  let coord = move.coord;
+  let cell = document.getElementById(
+    cellId(coord.row, coord.col));
+
+  if (cell) {
+    cell.classList
       .replace('grid-cell_clicked', 'grid-cell_normal');
-  game.lastMove = cell;
-
-  cell.innerHTML = value;
-  cell.classList.toggle('grid-cell_clicked');
+  }
 }
 
 //--------------------------------------------------
@@ -242,13 +266,10 @@ function switchToToken(game, token) {
   game.selectedToken = token.innerText;
 }
 
-function selectedToken() {
-
-}
-
 function initInterface(game) {
   let cleanupButton = document.getElementById('cleanupButton');
-  cleanupButton.onclick = () => sendMessage(game.socket, game.session, msgCleanHistory());
+  cleanupButton.onclick = () =>
+    sendMessage(game.socket, game.session, msgCleanHistory());
 
   let dialog = document.querySelector('dialog');
   dialogPolyfill.registerDialog(dialog);
@@ -284,7 +305,6 @@ function initInterface(game) {
 // "main" function
 window.onload = () => {
   let game = new Game;
-  drawGrid(game);
   initInterface(game);
 };
 
