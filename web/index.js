@@ -61,7 +61,8 @@ class Game {
   }
   connect(name) {
     let game = this;
-    let socket = new WebSocket('ws://34.68.64.169:8080');
+    let socket = new WebSocket('wss://tatrix.org/public/games/play-with-me/server');
+    //let socket = new WebSocket('ws://34.68.64.169:8080');
     //let socket = new WebSocket('ws://0.0.0.0:8080');
 
     socket.onopen = function(event) {
