@@ -79,7 +79,6 @@ class Game {
       let data = ctrlMsg.data;
       switch (ctrlMsg.message) {
         case 'Connected':
-          drawGrid(game.size, (r, c) => game.selectCell(r, c));
           drawSnackbar(data.Player + ' connected');
           game.rememberPlayer(data.Player);
           break;
@@ -297,6 +296,7 @@ function initInterface(game) {
   newGameButton.addEventListener('click', function() {
     let name = nameInput.value;
     game.connect(name);
+    drawGrid(game.size, (r, c) => game.selectCell(r, c));
     dialog.close();
   });
 
