@@ -12,10 +12,10 @@ import qualified TypesGame as TG
 data Message =
     Connected Data
   | Disconnected Data
-  | Win Data
   | SetSession Data
   | SetHistory Data
   | Move Data
+  | Win Data
   | Clean
   deriving (Generic, Show)
 instance ToJSON Message where

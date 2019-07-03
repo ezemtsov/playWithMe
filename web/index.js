@@ -32,21 +32,11 @@ class Game {
     removeFromPlayerList(player);
   }
   selectCell(row, col) {
-    let move = {
-      coord: {
-        row: row,
-        col: col
-      },
-      value: this.selectedToken
-    };
-
     if (this.history.some(
       v => v.coord.row == row && v.coord.col == col)) {
       console.log('Cell is occupied');
     } else {
       console.log('Clicked on:', row, col);
-      unfocusCell(this.lastMove);
-      this.history.push(move);
       sendMessage(
         this.socket,
         this.session(),
@@ -98,6 +88,8 @@ class Game {
           game.forgetPlayer(data.Player);
           break;
         case 'Move':
+          unfocusCell(game.lastMove);
+          game.history.push(data.Cell);
           fillCell(data.Cell);
           focusCell(data.Cell);
           break;
@@ -123,7 +115,6 @@ class Game {
     this.socket = socket;
   };
 };
-
 
 //--------------------------------------------------
 // NETWORK FUNCTIONS
