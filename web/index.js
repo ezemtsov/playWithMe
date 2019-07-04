@@ -7,7 +7,14 @@ class Game {
     this.socket = null;
     this.history = [];
     this.players = [];
-    this.selectedToken = "X";
+    this.me = {
+      id: null,
+      name: null,
+      token: {
+        code: null,
+        color: null
+      }
+    };
   }
   get lastMove() {
     return this.history[this.history.length - 1];
@@ -31,35 +38,41 @@ class Game {
     this.players = this.players.filter(e => e != player);
     removeFromPlayerList(player);
   }
-  selectCell(row, col) {
+  updatePlayer(player) {
+    updatePlayerList(player);
+  }
+  setToken(token) {
+    // Save seleced token
+    this.me.token = token;
+    // Toggle selector to relevant token
+    toggleTokenSelector(this.me.token);
+    // Let others know that we have switched
+    sendMessage(this.socket, msgUpdatePlayer(this.me));
+  }
+  selectCell(x, y) {
     if (this.history.some(
-      v => v.coord.row == row && v.coord.col == col)) {
+      v => v.coord.x == x && v.coord.y == y)) {
       console.log('Cell is occupied');
     } else {
-      console.log('Clicked on:', row, col);
-      sendMessage(
-        this.socket,
-        this.session(),
-        msgMove(row, col, this.selectedToken));
+      console.log('Clicked on:', x, y);
+      sendMessage(this.socket, msgMove(x, y, this.me.token));
     }
   }
   replayHistory() {
     //Redraw all the moves from history
-    this.history.forEach(move => {
-      fillCell(move);
-    });
+    this.history.forEach(move => fillCell(move));
     focusCell(this.lastMove);
+    //Fill player list
+    refillPlayerList(this.players);
 
-    // Pick a correct token.
-    // It's being selected based on available tokens
-    // and list of connected players.
-    let playersN = this.players.length;
-    // tokens are defined once as global alias to token class elements
-    let tokensN = Array.from(tokens).length;
-    let playerToken = (playersN - 1) % tokensN;
-    switchToToken(this, tokens[playerToken]);
+    // // Set default token
+    // let playersN = this.players.length;
+    // // tokens are defined once as global alias to token class elements
+    // let tokensN = Array.from(tokens).length;
+    // let playerTokenId = (playersN - 1) % tokensN;
+
   }
-  connect(name) {
+  connect() {
     let game = this;
     let socket = new WebSocket('wss://tatrix.org/public/games/play-with-me/server');
     //let socket = new WebSocket('ws://34.68.64.169:8080');
@@ -68,8 +81,7 @@ class Game {
     socket.onopen = function(event) {
       console.log('Connected to: ' + event.currentTarget.url);
 
-      sendMessage(socket, game.session(), msgConnect(name));
-      sendMessage(socket, game.session(), mstGetHistory(name));
+      sendMessage(socket, msgConnect(game.me.name, "NewGame", game.session()));
     };
     socket.onerror = function(error) {
       console.log('WebSocket Error: ' + error);
@@ -80,36 +92,41 @@ class Game {
       let data = ctrlMsg.data;
       switch (ctrlMsg.message) {
         case 'Connected':
-          drawSnackbar(data.Player + ' connected');
+          drawSnackbar(data.Player.name + ' connected');
           game.rememberPlayer(data.Player);
           break;
         case 'Disconnected':
-          drawSnackbar(data.Player + ' disconnected');
+          drawSnackbar(data.Player.name + ' disconnected');
           game.forgetPlayer(data.Player);
           break;
-        case 'Move':
+        case 'SetCell':
           unfocusCell(game.lastMove);
           game.history.push(data.Cell);
           fillCell(data.Cell);
           focusCell(data.Cell);
           break;
         case 'Win':
-          drawSnackbar(data.Player + ' won!');
+          drawSnackbar(data.Player.name + ' won!');
           break;
         case 'SetSession':
-          window.history.pushState(null, null, data.SessionId);
-          break;
-        case 'SetHistory':
-          console.log('Recieved history');
-          game.players = data.History.players;
-          game.history = data.History.moves;
+          console.log('Recieved session data');
+          game.players = data.SessionData.players;
+          game.history = data.SessionData.history;
           game.replayHistory();
-          refillPlayerList(game.players);
+
+          game.me = data.SessionData.me;
+          toggleTokenSelector(game.me.token);
+
+          window.history.pushState(null, null, data.SessionData.session);
           break;
         case 'Clean':
           game.history = [];
           cleanGrid();
           drawSnackbar('New game started');
+          break;
+        case 'UpdatePlayer':
+          game.updatePlayer(data.Player);
+          break;
       }
     };
     this.socket = socket;
@@ -119,43 +136,51 @@ class Game {
 //--------------------------------------------------
 // NETWORK FUNCTIONS
 
-// INPUT
-// Rewrite handler function
-
 // OUTPUT
 
-function sendMessage(socket, session, msg) {
-  let message = [session, msg];
-  socket.send(JSON.stringify(message));
+function sendMessage(socket, msg) {
+  socket.send(JSON.stringify(msg));
 }
 
-function msgMove(row, col, v) {
+function msgMove(row, col, token) {
   return {
     method: 'PostMove',
     resource: {
       Cell: {
-        coord: { row: row, col: col },
-        value: v
+        coord: {
+          x: row,
+          y: col
+        },
+        value: token
       }
-    }
-  };
-};
-
-function msgConnect(name) {
-  return {
-    method: 'Connect',
-    resource: {
-      Player: name
     }
   };
 }
 
-function mstGetHistory() {
-  return { method: 'GetHistory' };
-};
+function msgConnect(name, mode, session) {
+  return {
+    method: 'Connect',
+    resource: {
+      ConnectionData: {
+        playerName: name,
+        mode: mode,
+        session: session
+      }
+    }
+  };
+}
 
 function msgCleanHistory() {
   return { method: 'CleanHistory' };
+}
+
+function msgUpdatePlayer(player) {
+  return {
+    method: "UpdatePlayer",
+    resource: {
+      Player: player
+    }
+  };
 }
 
 //--------------------------------------------------
@@ -189,10 +214,10 @@ function fillCell(move) {
     let coord = move.coord;
     let value = move.value;
     let cell = document.getElementById(
-      cellId(coord.row, coord.col));
+      cellId(coord.x, coord.y));
 
     if (cell) {
-      cell.innerHTML = value;
+      cell.innerHTML = value.code;
     }
   }
 }
@@ -201,7 +226,7 @@ function focusCell(move) {
   if (move) {
     let coord = move.coord;
     let cell = document.getElementById(
-      cellId(coord.row, coord.col));
+      cellId(coord.x, coord.y));
 
     if (cell) {
       cell.classList.toggle('grid-cell_clicked');
@@ -213,7 +238,7 @@ function unfocusCell(move) {
   if (move) {
     let coord = move.coord;
     let cell = document.getElementById(
-      cellId(coord.row, coord.col));
+      cellId(coord.x, coord.y));
 
     if (cell) {
       cell.classList
@@ -237,14 +262,20 @@ function addToPlayerList(player) {
   let ul = document.querySelector('.player-list-item');
   let li = document.createElement('li');
   li.classList.add('mdl-list__item');
-  li.id = player;
-  li.appendChild(document.createTextNode(player));
+  li.id = player.id;
+  li.innerText = (player.name + '\t(' + player.token.code + ')');
+
   ul.appendChild(li);
 }
 
 function removeFromPlayerList(player) {
-  let li = document.getElementById(player);
+  let li = document.getElementById(player.id);
   li.parentNode.removeChild(li);
+}
+
+function updatePlayerList(player) {
+  let li = document.getElementById(player.id);
+  li.innerText = (player.name + '\t(' + player.token.code + ')');
 }
 
 function drawSnackbar(text) {
@@ -259,19 +290,21 @@ function drawSnackbar(text) {
   snackbarContainer.MaterialSnackbar.showSnackbar(data);
 };
 
-function switchToToken(game, token) {
+function toggleTokenSelector(token) {
   //tokens are defined once as global alias to token class elemets)
   for (let t of tokens) {
     t.classList.remove('mdl-button--colored');
   }
-  token.classList.add('mdl-button--colored');
-  game.selectedToken = token.innerText;
+  let tokenSelector = document.getElementById("token-" + token.code);
+  if (tokenSelector) {
+    tokenSelector.classList.add('mdl-button--colored');
+  }
 }
 
 function initInterface(game) {
   let cleanupButton = document.getElementById('cleanupButton');
   cleanupButton.onclick = () =>
-    sendMessage(game.socket, game.session, msgCleanHistory());
+    sendMessage(game.socket, msgCleanHistory());
 
   let dialog = document.querySelector('dialog');
   dialogPolyfill.registerDialog(dialog);
@@ -279,8 +312,16 @@ function initInterface(game) {
   let newGameButton = dialog.querySelector('.newGame');
 
   //tokens are defined once as global alias to token class elemets)
-  for (let t of tokens)
-    t.onclick = () => switchToToken(game, t);
+  for (let t of tokens) {
+    t.onclick = () => {
+      if (!t.classList.contains('mdl-button--colored')) {
+        game.setToken({
+          code: t.innerText,
+          color: "black"
+        });
+      }
+    };
+  }
 
   nameInput.addEventListener('keyup', function(event) {
     if (event.keyCode === 13) {
@@ -296,7 +337,8 @@ function initInterface(game) {
 
   newGameButton.addEventListener('click', function() {
     let name = nameInput.value;
-    game.connect(name);
+    game.me.name = name;
+    game.connect();
     drawGrid(game.size, (r, c) => game.selectCell(r, c));
     dialog.close();
   });

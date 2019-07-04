@@ -7,7 +7,7 @@ import Data.Aeson
 import Data.Aeson.TH
 import GHC.Generics
 
-import qualified TypesGame as TG
+import qualified TypesGame as G
 
 messageOptions = defaultOptions
   { sumEncoding = TaggedObject
@@ -15,12 +15,13 @@ messageOptions = defaultOptions
     , contentsFieldName = "resource" }
   }
 
-resourceOptions = defaultOptions
+noTagOptions = defaultOptions
   { sumEncoding = ObjectWithSingleField }
 
 data Message =
     Connect Data
   | PostMove Data
+  | UpdatePlayer Data
   | GetHistory
   | CleanHistory
   deriving (Generic, Eq, Show)
@@ -30,10 +31,20 @@ instance ToJSON Message where
   toJSON = genericToJSON messageOptions
 
 data Data =
-    Player TG.Player
-  | Cell TG.Cell
+    ConnectionData { playerName :: G.PlayerName
+                   , mode       :: ConnectionMode
+                   , session    :: Maybe G.SessionId }
+  | Player G.Player
+  | Cell G.Cell
   deriving (Generic, Eq, Show)
 instance FromJSON Data where
-  parseJSON = genericParseJSON resourceOptions
+  parseJSON = genericParseJSON noTagOptions
 instance ToJSON Data where
-  toJSON = genericToJSON resourceOptions
+  toJSON = genericToJSON noTagOptions
+
+data ConnectionMode =
+    NewGame
+  | RandomGame
+  deriving (Generic, Eq, Show)
+instance FromJSON ConnectionMode
+instance ToJSON ConnectionMode

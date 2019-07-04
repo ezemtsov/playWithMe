@@ -6,15 +6,15 @@ import Data.Aeson
 import Data.Text
 import GHC.Generics
 
-import qualified TypesGame as TG
+import qualified TypesGame as G
 
 -- Structure for output messages
 data Message =
     Connected Data
   | Disconnected Data
   | SetSession Data
-  | SetHistory Data
-  | Move Data
+  | SetCell Data
+  | UpdatePlayer Data
   | Win Data
   | Clean
   deriving (Generic, Show)
@@ -26,11 +26,12 @@ instance ToJSON Message where
     }
 
 data Data =
-    Player TG.Player
-  | Cell TG.Cell
-  | SessionId TG.SessionId
-  | History { moves   :: [TG.Cell]
-            , players :: [TG.Player] }
+    Player G.Player
+  | Cell G.Cell
+  | SessionData { session :: G.SessionId
+                , me      :: G.Player
+                , players :: [G.Player]
+                , history :: [G.Cell] }
   deriving (Generic, Show)
 instance ToJSON Data where
   toJSON = genericToJSON defaultOptions

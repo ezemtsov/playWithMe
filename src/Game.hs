@@ -3,6 +3,7 @@
 module Game where
 
 import qualified Data.HashMap.Strict.InsOrd as HM
+import Data.List ((!!))
 import Data.ByteString.Lazy (ByteString)
 
 import Control.Monad (forM_, forever)
@@ -17,7 +18,7 @@ import qualified TypesGameInput as I
 import qualified TypesGameOutput as O
 
 --------------------------------------------------
--- State types
+-- Game State
 --------------------------------------------------
 
 data GameState = GameState {
@@ -46,7 +47,7 @@ addClient client state = GameState
 
 removeClient :: Client -> GameState -> GameState
 removeClient client state = GameState
-  (filter ((/= fst client) . fst) $ clients state)
+  (filter ((/= G.id (fst client)) . G.id . fst) $ clients state)
   (history state)
 
 broadcast :: ByteString -> GameState -> IO ()
@@ -65,6 +66,17 @@ lastMove state = let (c, v) = head $
                        HM.toRevList (history state)
                  in G.Cell c v
 
+updatePlayer :: Client -> G.Player
+            -> GameState -> GameState
+updatePlayer client@(oldPlayer,conn) newPlayer state =
+  addClient newClient . removeClient client $ state
+  where newClient = (newPlayer,conn)
+
+defaultToken :: GameState -> G.PlayerToken
+defaultToken state = G.Token code color
+  where code = ["X","O"] !! ((numClients state) `mod` 2)
+        color = "black"
+
 --------------------------------------------------
 -- Game server functions
 --------------------------------------------------
@@ -74,37 +86,40 @@ type GameAction = MVar GameState -> IO ()
 -- Function that encapsulates message processing logic
 gameLogic :: Client -> I.Message -> GameAction
 gameLogic client msg state = case msg of
-  I.GetHistory -> sendHistory client state
-  I.CleanHistory -> cleanHistory state
-  I.PostMove (I.Cell cell) -> saveMove client cell state
+  I.PostMove (I.Cell cell) -> postMoveAction client cell state
+  I.CleanHistory -> cleanHistoryAction state
+  I.UpdatePlayer (I.Player player) -> updatePlayerAction client player state
+  _ -> print $ "Handler is not implemented: " <> show msg
 
-saveMove :: Client -> G.Cell -> GameAction
-saveMove (user, conn) cell state = do
+updatePlayerAction :: Client -> G.Player -> GameAction
+updatePlayerAction client newPlayer state = do
+  -- Update player with new token
+  modifyMVar_ state $ \s -> do
+    let s' = updatePlayer client newPlayer s
+    return s'
+  -- Share update with other clients
+  readMVar state >>= \s -> do
+    let ctrlMsg = O.UpdatePlayer (O.Player newPlayer)
+    broadcast (encode ctrlMsg) s
+
+postMoveAction :: Client -> G.Cell -> GameAction
+postMoveAction (player, conn) cell state = do
   -- Save move into game history
   modifyMVar_ state $ \s -> do
     let s' = addMove cell s
     return s'
   -- Share the move with other clients
   readMVar state >>= \s -> do
-    let ctrlMsg = O.Move (O.Cell cell)
+    let ctrlMsg = O.SetCell (O.Cell cell)
     broadcast (encode ctrlMsg) s
       -- Then check if player won
     if winSituation s
-      then let ctrlMsg = O.Win (O.Player user)
+      then let ctrlMsg = O.Win (O.Player player)
            in broadcast (encode ctrlMsg) s
       else return ()
 
-sendHistory :: Client -> GameAction
-sendHistory (user, conn) state = do
-  readMVar state >>= \s -> do
-    let moves = G.toCell <$> HM.toList (history s)
-        players = fst <$> clients s
-    let ctrlMsg = O.SetHistory $
-                  O.History moves players
-    WS.sendTextData conn (encode ctrlMsg)
-
-cleanHistory :: GameAction
-cleanHistory state = do
+cleanHistoryAction :: GameAction
+cleanHistoryAction state = do
   modifyMVar_ state $ \s -> return $
     GameState (clients s) HM.empty
   readMVar state >>= \s ->
@@ -129,8 +144,8 @@ countStrike cell history axis =
           history (deltaR, deltaC) = do
           -- Calculate updated coordinates
           let nextMove = G.Coordinate
-                         (G.row coord + deltaR)
-                         (G.col coord + deltaC)
+                         (G.x coord + deltaR)
+                         (G.y coord + deltaC)
           let nextValue = HM.lookup nextMove history
           case nextValue of
             Nothing -> i

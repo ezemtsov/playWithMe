@@ -4,7 +4,8 @@
 module Router where
 
 import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HM
+import Data.HashMap.Strict.InsOrd (toList)
+import qualified Data.HashMap.Strict as HM hiding (toList)
 
 import Control.Monad (forever)
 import Control.Concurrent
@@ -23,10 +24,9 @@ import Game
 ----------------------------------------------------------------------
 -- Here's an entry point to the app.
 
--- We need a router that allows to start independent game sessions
--- each time when host requests a new game. Each game session
--- must be stored in a router state so that guest players are able
--- to join specific session.
+-- Router starts independent game sessions each time when host
+-- requests a new game. Each game session must be stored in
+-- a router state so that guest players are able to join specific session.
 
 -- To make that possible we need to define router state
 type RouterState = HashMap G.SessionId (MVar GameState)
@@ -42,51 +42,37 @@ getSession :: G.SessionId -> RouterState
            -> Maybe (MVar GameState)
 getSession = HM.lookup
 
-data RouterMessage = Route (Maybe G.SessionId) I.Message
-  deriving (Generic, Eq, Show)
-instance FromJSON RouterMessage
-instance ToJSON RouterMessage
-
-data StateVersion = New | Existing
-  deriving (Eq, Show)
-
-fetchGameSession :: Maybe G.SessionId
-                 -> WS.Connection
+fetchGameState :: Maybe G.SessionId
                  -> MVar RouterState
-                 -> IO ( MVar GameState )
-fetchGameSession maybeSession conn rState =
+                 -> IO ( G.SessionId, MVar GameState )
+fetchGameState maybeSession rState =
   case maybeSession of
+    -- Connection request has sessionId
     Just sId -> do
       -- Let's check if it exists in router state
       s <- readMVar rState
       case getSession sId s of
+        -- If requested session does not exist
         Nothing -> do
-          -- Session is not found
+          -- Let's just create it
           newGame <- newMVar Game.newGameState
-          -- Use that sessionId
           -- Update the router state
           modifyMVar_ rState $ \s ->
             return (addSession sId newGame s)
           -- Return new session
-          return newGame
-
-        Just gState ->
-          -- Session is found
-          return gState
+          return (sId, newGame)
+        -- If session if found we just add it
+        Just gState -> return (sId, gState)
     Nothing -> do
       -- User sent a message with no SessionId
       -- We'll need to create a new session
       newGame <- newMVar Game.newGameState
       -- Generate new sessionId
       sId <- genHash
-      -- Send sessionId to the client
-      let ctrlMsg = O.SetSession (O.SessionId sId)
-      WS.sendTextData conn (encode ctrlMsg)
-      -- Update the router state
       modifyMVar_ rState $ \s ->
         return (addSession sId newGame s)
       -- Return new session
-      return newGame
+      return (sId, newGame)
 
 -- Main game backend function
 startRouter :: MVar RouterState -> WS.ServerApp
@@ -98,41 +84,53 @@ startRouter rState pending = do
 
   -- Let's recieve the initial message
   msg <- WS.receiveData conn :: IO ByteString
-  -- print ("init msg: " <> msg)
-  let maybeMsg = decode msg :: Maybe RouterMessage
+  let maybeMsg = decode msg :: Maybe I.Message
   case maybeMsg of
     Nothing -> incorrectMessage msg
-    Just (Route maybeSession initMessage) -> do
-
-      gState <- fetchGameSession maybeSession conn rState
+    Just initMessage -> do
       case initMessage of
-        I.Connect (I.Player name) -> do
-          let client = (name, conn)
+        I.Connect (I.ConnectionData playerName mode maybeSession) -> do
+
+          (sId, gState) <- fetchGameState maybeSession rState
+          pId <- genHash
+
+          token <- Game.defaultToken <$> readMVar gState
+          
+          let player = G.Player pId playerName token
+          let client = (player, conn)
 
           flip finally (disconnect client gState) $ do
+            -- Send session context to the new player
+            readMVar gState >>= \s -> do
+              let moves = G.toCell <$> toList (history s)
+                  players = fst <$> clients s
+                  ctrlMsg = O.SetSession $
+                            O.SessionData sId player players moves
+              WS.sendTextData conn (encode ctrlMsg)
+            
+            -- Add new client to state and notify everybody
             modifyMVar_ gState $ \s -> do
               let s' = Game.addClient client s
               -- Warn everybody
-              let ctrlMsg = O.Connected (O.Player name)
+              let ctrlMsg = O.Connected (O.Player player)
               Game.broadcast (encode ctrlMsg) s'
               return s'
 
             -- Start message exchange
             talk client gState
-        _ -> print "Initial message expected"
+        _ -> print "Wrong initial message"
 
 -- Message parser and game logic
 talk :: Client -> MVar GameState -> IO ()
-talk (user, conn) state = forever $ do
+talk client@(_,conn) state = forever $ do
   -- Recieve a message
   msg <- WS.receiveData conn :: IO ByteString
-  -- print ("game msg" <> msg)
   -- Try to parse it as contol command
-  let maybeMsg = decode msg :: Maybe RouterMessage
+  let maybeMsg = decode msg :: Maybe I.Message
   case maybeMsg of
     Nothing -> incorrectMessage msg
-    Just (Route maybeSession gameMessage) -> do
-      Game.gameLogic (user, conn) gameMessage state
+    Just msg -> do
+      Game.gameLogic client msg state
 
 -- Disconnect from server
 disconnect :: Client -> MVar GameState -> IO ()
@@ -140,17 +138,17 @@ disconnect client gState = do
   -- Remove client from state
   s <- modifyMVar gState $ \s ->
     let s' = removeClient client s in return (s',s')
-    
+
   -- Broadcast that one of the players is disconnected
   let ctrlMsg = O.Disconnected $
                 O.Player (fst client)
   broadcast (encode ctrlMsg) s
-    
+
 incorrectMessage :: ByteString -> IO ()
 incorrectMessage msg =
   print ("Incorrect message: " <> msg)
 
-genHash :: IO G.SessionId
+genHash :: IO G.Hash
 genHash = do
   let hashChr = ['0'..'9'] ++ ['a'..'z'] ++ ['A'..'Z']
   xs <- sequenceA .
