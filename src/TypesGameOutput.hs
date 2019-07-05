@@ -10,12 +10,12 @@ import qualified TypesGame as G
 
 -- Structure for output messages
 data Message =
-    Connected Data
-  | Disconnected Data
-  | SetSession Data
-  | SetCell Data
-  | UpdatePlayer Data
-  | Win Data
+    Connected G.Player
+  | Disconnected G.Player
+  | UpdatePlayer G.Player
+  | SetSession SessionData
+  | SetCell G.Cell
+  | Win G.Player
   | Clean
   deriving (Generic, Show)
 instance ToJSON Message where
@@ -25,15 +25,10 @@ instance ToJSON Message where
       , contentsFieldName = "data" }
     }
 
-data Data =
-    Player G.Player
-  | Cell G.Cell
-  | SessionData { session :: G.SessionId
-                , me      :: G.Player
-                , players :: [G.Player]
-                , history :: [G.Cell] }
-  deriving (Generic, Show)
-instance ToJSON Data where
-  toJSON = genericToJSON defaultOptions
-    { allNullaryToStringTag = True
-    , sumEncoding = ObjectWithSingleField }
+data SessionData = SessionData
+  { session :: G.SessionId
+  , me      :: G.Player
+  , players :: [G.Player]
+  , history :: [G.Cell]
+  } deriving (Generic, Show)
+instance ToJSON SessionData

@@ -64,13 +64,6 @@ class Game {
     focusCell(this.lastMove);
     //Fill player list
     refillPlayerList(this.players);
-
-    // // Set default token
-    // let playersN = this.players.length;
-    // // tokens are defined once as global alias to token class elements
-    // let tokensN = Array.from(tokens).length;
-    // let playerTokenId = (playersN - 1) % tokensN;
-
   }
   connect() {
     let game = this;
@@ -92,32 +85,32 @@ class Game {
       let data = ctrlMsg.data;
       switch (ctrlMsg.message) {
         case 'Connected':
-          drawSnackbar(data.Player.name + ' connected');
-          game.rememberPlayer(data.Player);
+          drawSnackbar(data.name + ' connected');
+          game.rememberPlayer(data);
           break;
         case 'Disconnected':
-          drawSnackbar(data.Player.name + ' disconnected');
-          game.forgetPlayer(data.Player);
+          drawSnackbar(data.name + ' disconnected');
+          game.forgetPlayer(data);
           break;
         case 'SetCell':
           unfocusCell(game.lastMove);
-          game.history.push(data.Cell);
-          fillCell(data.Cell);
-          focusCell(data.Cell);
+          game.history.push(data);
+          fillCell(data);
+          focusCell(data);
           break;
         case 'Win':
-          drawSnackbar(data.Player.name + ' won!');
+          drawSnackbar(data.name + ' won!');
           break;
         case 'SetSession':
           console.log('Recieved session data');
-          game.players = data.SessionData.players;
-          game.history = data.SessionData.history;
+          game.players = data.players;
+          game.history = data.history;
           game.replayHistory();
 
-          game.me = data.SessionData.me;
+          game.me = data.me;
           toggleTokenSelector(game.me.token);
 
-          window.history.pushState(null, null, data.SessionData.session);
+          window.history.pushState(null, null, data.session);
           break;
         case 'Clean':
           game.history = [];
@@ -125,7 +118,7 @@ class Game {
           drawSnackbar('New game started');
           break;
         case 'UpdatePlayer':
-          game.updatePlayer(data.Player);
+          game.updatePlayer(data);
           break;
       }
     };

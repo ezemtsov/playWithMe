@@ -112,7 +112,7 @@ startRouter rState pending = do
             modifyMVar_ gState $ \s -> do
               let s' = Game.addClient client s
               -- Warn everybody
-              let ctrlMsg = O.Connected (O.Player player)
+              let ctrlMsg = O.Connected player
               Game.broadcast (encode ctrlMsg) s'
               return s'
 
@@ -140,8 +140,7 @@ disconnect client gState = do
     let s' = removeClient client s in return (s',s')
 
   -- Broadcast that one of the players is disconnected
-  let ctrlMsg = O.Disconnected $
-                O.Player (fst client)
+  let ctrlMsg = O.Disconnected (fst client)
   broadcast (encode ctrlMsg) s
 
 incorrectMessage :: ByteString -> IO ()

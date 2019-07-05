@@ -99,7 +99,7 @@ updatePlayerAction client newPlayer state = do
     return s'
   -- Share update with other clients
   readMVar state >>= \s -> do
-    let ctrlMsg = O.UpdatePlayer (O.Player newPlayer)
+    let ctrlMsg = O.UpdatePlayer newPlayer
     broadcast (encode ctrlMsg) s
 
 postMoveAction :: Client -> G.Cell -> GameAction
@@ -110,11 +110,11 @@ postMoveAction (player, conn) cell state = do
     return s'
   -- Share the move with other clients
   readMVar state >>= \s -> do
-    let ctrlMsg = O.SetCell (O.Cell cell)
+    let ctrlMsg = O.SetCell cell
     broadcast (encode ctrlMsg) s
       -- Then check if player won
     if winSituation s
-      then let ctrlMsg = O.Win (O.Player player)
+      then let ctrlMsg = O.Win player
            in broadcast (encode ctrlMsg) s
       else return ()
 
