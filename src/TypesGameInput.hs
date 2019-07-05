@@ -19,9 +19,9 @@ noTagOptions = defaultOptions
   { sumEncoding = ObjectWithSingleField }
 
 data Message =
-    Connect Data
-  | PostMove Data
-  | UpdatePlayer Data
+    Connect ConnectionData
+  | PostMove G.Cell
+  | UpdatePlayer G.Player
   | GetHistory
   | CleanHistory
   deriving (Generic, Eq, Show)
@@ -30,17 +30,13 @@ instance FromJSON Message where
 instance ToJSON Message where
   toJSON = genericToJSON messageOptions
 
-data Data =
-    ConnectionData { playerName :: G.PlayerName
-                   , mode       :: ConnectionMode
-                   , session    :: Maybe G.SessionId }
-  | Player G.Player
-  | Cell G.Cell
-  deriving (Generic, Eq, Show)
-instance FromJSON Data where
-  parseJSON = genericParseJSON noTagOptions
-instance ToJSON Data where
-  toJSON = genericToJSON noTagOptions
+data ConnectionData = ConnectionData
+  { playerName :: G.PlayerName
+  , mode       :: ConnectionMode
+  , session    :: Maybe G.SessionId
+  } deriving (Generic, Eq, Show)
+instance FromJSON ConnectionData
+instance ToJSON ConnectionData
 
 data ConnectionMode =
     NewGame

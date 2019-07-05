@@ -146,13 +146,11 @@ function msgMove(row, col, token) {
   return {
     method: 'PostMove',
     resource: {
-      Cell: {
-        coord: {
-          x: row,
-          y: col
-        },
-        value: token
-      }
+      coord: {
+        x: row,
+        y: col
+      },
+      value: token
     }
   };
 }
@@ -161,11 +159,9 @@ function msgConnect(name, mode, session) {
   return {
     method: 'Connect',
     resource: {
-      ConnectionData: {
-        playerName: name,
-        mode: mode,
-        session: session
-      }
+      playerName: name,
+      mode: mode,
+      session: session
     }
   };
 }
@@ -177,9 +173,7 @@ function msgCleanHistory() {
 function msgUpdatePlayer(player) {
   return {
     method: "UpdatePlayer",
-    resource: {
-      Player: player
-    }
+    resource: player
   };
 }
 

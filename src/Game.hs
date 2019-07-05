@@ -86,9 +86,9 @@ type GameAction = MVar GameState -> IO ()
 -- Function that encapsulates message processing logic
 gameLogic :: Client -> I.Message -> GameAction
 gameLogic client msg state = case msg of
-  I.PostMove (I.Cell cell) -> postMoveAction client cell state
+  I.PostMove cell -> postMoveAction client cell state
+  I.UpdatePlayer player -> updatePlayerAction client player state
   I.CleanHistory -> cleanHistoryAction state
-  I.UpdatePlayer (I.Player player) -> updatePlayerAction client player state
   _ -> print $ "Handler is not implemented: " <> show msg
 
 updatePlayerAction :: Client -> G.Player -> GameAction
