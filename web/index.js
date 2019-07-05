@@ -155,13 +155,13 @@ function msgMove(row, col, token) {
   };
 }
 
-function msgConnect(name, mode, session) {
+function msgConnect(playerName, mode, session) {
   return {
     method: 'Connect',
     resource: {
-      playerName: name,
-      mode: mode,
-      session: session
+      playerName,
+      mode,
+      session
     }
   };
 }
